@@ -12,7 +12,7 @@
 //
 //     id = 1                   一套预设的起点（只用来分块：遇到 id 就换一套）
 //     name = 现代简约           显示名（必填：没有 name 的块会被丢掉）
-//     ui_color_bg = F4F5F7     颜色项，键名与 settings.txt 里的完全一致（一共 17 项）
+//     ui_color_bg = F4F5F7     颜色项，键名与 settings.txt 里的完全一致（一共 18 项）
 //     ui_color_panel = FFFFFF
 //     ...
 //
@@ -21,7 +21,7 @@
 // 兼容早期版本的短键名：bg / panel / text / button / accent / correct / wrong
 // （等价于 ui_color_bg / _panel / _text / _button / _accent / _correct / _wrong）。
 //
-// 完整说明（17 个颜色项的键名、分组、默认值）见 docs/主题配色格式.md。
+// 完整说明（18 个颜色项的键名、分组、默认值）见 docs/主题配色格式.md。
 // ============================================================================
 namespace quiz {
 
@@ -43,10 +43,10 @@ struct ThemePreset {
 /// 解析预设文本；只保留有 name 的块
 std::vector<ThemePreset> parseThemePresets(const std::string& text);
 
-/// 把一套预设套到设置上：只覆盖写对了的十六进制颜色，返回实际应用了几个（0~16）
+/// 把一套预设套到设置上：只覆盖写对了的十六进制颜色，返回实际应用了几个（0~17）
 int applyThemePreset(const ThemePreset& preset, Settings& settings);
 
-/// 全部可配颜色的键名（17 个，顺序与设置页「主题配色」一致）。
+/// 全部可配颜色的键名（18 个，顺序与设置页「主题配色」一致）。
 /// 写 themes.txt、写文档、写测试都对着这份清单来
 const std::vector<std::string>& themeColorKeys();
 

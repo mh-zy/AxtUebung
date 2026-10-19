@@ -198,6 +198,7 @@ const std::pair<const char*, const char*> kBuiltinTexts[] = {
     {"ui.settings.color_button_text", "主按钮文字"},
     {"ui.settings.color_button2", "次按钮底"},
     {"ui.settings.color_icon", "图标色"},
+    {"ui.settings.color_scrollbar", "滚动条"},
     {"ui.settings.color_partial", "部分分"},
     {"ui.settings.color_draft", "未提交"},
     {"ui.settings.color_star", "收藏星标"},

@@ -29,6 +29,14 @@ public:
 
     /// 从首页进入设置时调用：回到根页
     void reset() { page_ = Page::Root; }
+    /// Android 返回手势：子页先回设置根页；已经在根页返回 false。
+    bool backToRoot() {
+        if (page_ == Page::Root) {
+            return false;
+        }
+        page_ = Page::Root;
+        return true;
+    }
 
     /// 图标按钮的画法由 UiApp 注入（设置页头部要和首页共用同一套样式）
     using IconButton =

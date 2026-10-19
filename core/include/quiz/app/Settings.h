@@ -36,25 +36,26 @@ struct Settings {
     /// 界面比例："auto" = 跟随窗口，也可以写 "16:9"（格式是 宽:高）
     std::string uiAspect = "auto";
     /// 界面配色：十六进制 RRGGBB（可带 #）；默认值就是原来内置主题的颜色
-    std::string uiThemeName = "电子绿";         // 当前主题名（导入预设时记住）
-    std::string uiColorBackground = "0F171C";   // 窗口底色
-    std::string uiColorPanel = "171F24";        // 面板 / 输入框底色
-    std::string uiColorText = "EBF5F0";         // 正文文字
-    std::string uiColorButton = "295C4A";       // 按钮底色
-    std::string uiColorAccent = "96DCB4";       // 强调色（标题 / 进度 / 提示）
-    std::string uiColorCorrect = "78DCA0";      // 答对
-    std::string uiColorWrong = "F08C82";        // 答错
-    // ---- 配色扩容：底色 / 文字 / 控件 / 状态，共 17 项 ----
-    std::string uiColorInput = "232E34";        // 输入框底色
-    std::string uiColorBorder = "35434A";       // 边框线
-    std::string uiColorTextMuted = "8FA3A0";    // 次要文字（说明 / 禁用）
-    std::string uiColorTextAccent = "96DCB4";   // 强调文字（标题 / 题号）
-    std::string uiColorButtonText = "16181C";   // 主按钮上的文字
-    std::string uiColorButton2 = "24322F";      // 次按钮底色
-    std::string uiColorIcon = "EBF5F0";         // 图标颜色
-    std::string uiColorPartial = "E8C46A";      // 部分分
-    std::string uiColorDraft = "5B9BD5";        // 未提交（正在作答：选了 / 填了但还没交）
-    std::string uiColorStar = "F2C14E";         // 收藏星标
+    std::string uiThemeName = "冷钢凝血";       // 当前主题名（导入预设时记住）
+    std::string uiColorBackground = "D8DDE3";   // 窗口底色
+    std::string uiColorPanel = "F0F2F5";        // 面板 / 输入框底色
+    std::string uiColorText = "1A1C1D";         // 正文文字
+    std::string uiColorButton = "C4CBD2";       // 按钮底色
+    std::string uiColorAccent = "B22222";       // 强调色（标题 / 进度 / 提示）
+    std::string uiColorCorrect = "5C1010";      // 答对
+    std::string uiColorWrong = "D32F2F";        // 答错
+    // ---- 配色扩容：底色 / 文字 / 控件 / 状态，共 18 项 ----
+    std::string uiColorInput = "E2E6EA";        // 输入框底色
+    std::string uiColorBorder = "B0B9C2";       // 边框线
+    std::string uiColorTextMuted = "6A7278";    // 次要文字（说明 / 禁用）
+    std::string uiColorTextAccent = "8B0000";   // 强调文字（标题 / 题号）
+    std::string uiColorButtonText = "1A1C1D";   // 主按钮上的文字
+    std::string uiColorButton2 = "D8DEE3";      // 次按钮底色
+    std::string uiColorIcon = "3A434A";         // 图标颜色
+    std::string uiColorScrollbar = "8D969D";    // 滚动条滑块（轨道自动混合）
+    std::string uiColorPartial = "A93226";      // 部分分
+    std::string uiColorDraft = "3F7FBF";        // 未提交（正在作答：选了 / 填了但还没交）
+    std::string uiColorStar = "D35400";         // 收藏星标
 
     /// 允许的停顿区间：手改配置文件写歪了也会夹回这个范围
     static constexpr float kMinDelaySeconds = 0.3f;

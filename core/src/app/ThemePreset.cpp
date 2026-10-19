@@ -30,6 +30,7 @@ const FieldRef kFields[] = {
     {"ui_color_button_text", &Settings::uiColorButtonText},
     {"ui_color_button2", &Settings::uiColorButton2},
     {"ui_color_icon", &Settings::uiColorIcon},
+    {"ui_color_scrollbar", &Settings::uiColorScrollbar},
     {"ui_color_accent", &Settings::uiColorAccent},
     {"ui_color_correct", &Settings::uiColorCorrect},
     {"ui_color_wrong", &Settings::uiColorWrong},

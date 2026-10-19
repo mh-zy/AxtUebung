@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
@@ -19,6 +20,8 @@ import android.view.KeyEvent;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
 
 import java.io.Closeable;
 import java.io.File;
@@ -92,6 +95,7 @@ public class MainActivity extends NativeActivity {
     private Uri pendingSaveUri = null;
 
     private EditText imeView;
+    private OnBackInvokedCallback backCallback;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -128,6 +132,32 @@ public class MainActivity extends NativeActivity {
             }
             return false;
         });
+
+        // Android 13+ 的返回手势走 OnBackInvokedDispatcher；如果不拦截，
+        // NativeActivity 会直接 finish，C++ 页面状态根本没有机会处理。
+        if (Build.VERSION.SDK_INT >= 33) {
+            backCallback = this::requestNativeBack;
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT, backCallback);
+        }
+    }
+
+    @Override
+    public void onBackPressed() {
+        requestNativeBack();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (Build.VERSION.SDK_INT >= 33 && backCallback != null) {
+            getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);
+            backCallback = null;
+        }
+        super.onDestroy();
+    }
+
+    private void requestNativeBack() {
+        nativeRequestBack();
     }
 
     /** native 调用（渲染线程）→ 转到 UI 线程弹出软键盘 */
@@ -558,4 +588,5 @@ public class MainActivity extends NativeActivity {
 
     private static native void nativeOnText(String text);
     private static native void nativeOnKey(int keyCode);
+    private static native void nativeRequestBack();
 }

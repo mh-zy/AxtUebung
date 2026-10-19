@@ -306,3 +306,12 @@ ui.settings.feedback_title = 反馈与联系
 ui.settings.feedback_hint = 遇到问题、发现错误或有建议，欢迎发送邮件：
 
 ui.settings.beta_warning = 当前为内测版本，不能保证程序一定稳定
+
+ui.common.back_again_exit = 再返回一次退出应用
+
+ui.home.upload = 导入题库
+ui.home.short_stats = 统计
+ui.home.short_settings = 设置
+ui.home.short_upload = 导入
+
+ui.settings.color_scrollbar = 滚动条

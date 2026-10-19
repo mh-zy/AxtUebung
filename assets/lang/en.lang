@@ -304,3 +304,12 @@ ui.settings.feedback_title = Feedback
 ui.settings.feedback_hint = For bugs, corrections, or suggestions, please email:
 
 ui.settings.beta_warning = This is a beta build; stability is not guaranteed.
+
+ui.common.back_again_exit = Press back again to exit
+
+ui.home.upload = Import bank
+ui.home.short_stats = Stats
+ui.home.short_settings = Settings
+ui.home.short_upload = Import
+
+ui.settings.color_scrollbar = Scrollbar

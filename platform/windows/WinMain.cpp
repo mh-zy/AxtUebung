@@ -146,13 +146,12 @@ ImGuiKey translateKey(WPARAM key) {
     }
 }
 
-/// 处理「返回」：不在首页时回到首页，在首页时退出
+/// 处理「返回」：页面导航由 UiApp 统一处理；首页二次返回才退出。
 void handleBack() {
-    if (g_ui.screen() != quiz::ui::Screen::Home) {
-        g_context.saveProgress();
-        g_ui.setScreen(quiz::ui::Screen::Home);
+    if (g_ui.handleBack()) {
         return;
     }
+    g_context.saveProgress();
     g_running = false;
     PostQuitMessage(0);
 }

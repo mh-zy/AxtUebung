@@ -34,8 +34,11 @@ public:
     void draw(float deltaSeconds);
 
     Screen screen() const { return screen_; }
-    /// 直接切换页面（无头截图工具与“返回”逻辑会用到）
+    /// 直接切换页面（无头截图工具用）
     void setScreen(Screen screen) { screen_ = screen; }
+    /// Android 返回手势 / Windows 返回键：
+    /// true = 已在界面内处理；false = 平台可以退出应用。
+    bool handleBack();
 
     /// 界面文字变化（切语言、加载题库）后需要重建字体图集
     void markFontDirty() { fontDirty_ = true; }
@@ -100,6 +103,8 @@ private:
     void drawExamPicker();
     /// 「确定交卷吗」确认框
     void drawExamSubmitAsk();
+    /// 考试中返回时的「退出考试」确认框
+    void drawExamExitAsk();
     /// 交卷：判分、写进度、切到成绩页（倒计时到点也走这里）
     void finishExamNow();
     /// 考试成绩页：分数 / 及格与否 / 逐题对错
@@ -115,23 +120,29 @@ private:
     AppContext& context_;
     SettingsScreen settingsScreen_;
     Screen screen_ = Screen::Home;
+    Screen quizParent_ = Screen::Home;      // 返回刷题页时回哪里
+    Screen resultParent_ = Screen::Quiz;    // 返回结果页时回哪里
     int selectedBank_ = 0;
     bool fontDirty_ = true;
     std::string toast_;
     float toastTimer_ = 0.0f;
     float frameDelta_ = 0.0f;      // 本帧时长（秒）：自动跳转倒计时用
+    bool pendingBackDismissText_ = false;
+    bool pendingBackClosePopup_ = false;
+    bool exitArmed_ = false;
+    float exitArmTimer_ = 0.0f;
     float autoNextTimer_ = 0.0f;   // >0 表示正在倒计时自动跳下一题
     int autoNextIndex_ = -1;       // 倒计时是为哪一题安排的
     bool aspectApplied_ = false;   // 启动后是否已经把窗口调成设置里的比例
-    unsigned int colorAccentRgb_ = 0x96DCB4;    // 0xRRGGBB，来自设置
-    unsigned int colorCorrectRgb_ = 0x78DCA0;
-    unsigned int colorWrongRgb_ = 0xF08C82;
-    unsigned int colorPartialRgb_ = 0xE8C46A;   // 部分分 / 进度条
-    unsigned int colorDraftRgb_ = 0x5B9BD5;     // 未提交（正在作答）
-    unsigned int colorStarRgb_ = 0xF2C14E;      // 收藏星标
-    unsigned int colorTextAccentRgb_ = 0x96DCB4; // 强调文字（标题 / 题号）
-    unsigned int colorButtonTextRgb_ = 0x16181C; // 主按钮上的文字
-    unsigned int colorIconRgb_ = 0xEBF5F0;      // 图标颜色
+    unsigned int colorAccentRgb_ = 0xB22222;    // 0xRRGGBB，来自设置
+    unsigned int colorCorrectRgb_ = 0x5C1010;
+    unsigned int colorWrongRgb_ = 0xD32F2F;
+    unsigned int colorPartialRgb_ = 0xA93226;   // 部分分 / 进度条
+    unsigned int colorDraftRgb_ = 0x3F7FBF;     // 未提交（正在作答）
+    unsigned int colorStarRgb_ = 0xD35400;      // 收藏星标
+    unsigned int colorTextAccentRgb_ = 0x8B0000; // 强调文字（标题 / 题号）
+    unsigned int colorButtonTextRgb_ = 0x1A1C1D; // 主按钮上的文字
+    unsigned int colorIconRgb_ = 0x3A434A;      // 图标颜色
     bool statsResetArmed_ = false;   // 统计页「重置统计」是否已经点过一次（再点才清零）
     int clearArmedBank_ = -1;        // 题库卡片上「清除数据」已经点过一次的是哪一张
     int deleteArmedBank_ = -1;       // 卡片上「删除题库」已经点过一次的是哪一张
@@ -149,6 +160,7 @@ private:
     // 考试模式：
     bool openExamPicker_ = false;               // 本帧要弹出「选卷」框
     bool examSubmitAsk_ = false;                // 本帧要弹出「确定交卷吗」
+    bool examExitAsk_ = false;                  // 本帧要弹出「退出考试」
     std::vector<io::ExamPaper> examPreviews_;   // 选卷框里的预览（题数 / 满分 / 抽题提示）
     int pendingExam_ = -1;                      // 准备页上等确认的那套卷（题库里的下标）
 

@@ -326,23 +326,24 @@ struct ColorDef {
 };
 
 const ColorDef kThemeColors[] = {
-    {"ui_color_bg", "ui.settings.color_bg", &Settings::uiColorBackground, "0F171C", 0},
-    {"ui_color_panel", "ui.settings.color_panel", &Settings::uiColorPanel, "171F24", 0},
-    {"ui_color_input", "ui.settings.color_input", &Settings::uiColorInput, "232E34", 0},
-    {"ui_color_border", "ui.settings.color_border", &Settings::uiColorBorder, "35434A", 0},
-    {"ui_color_text", "ui.settings.color_text", &Settings::uiColorText, "EBF5F0", 1},
-    {"ui_color_text_muted", "ui.settings.color_text_muted", &Settings::uiColorTextMuted, "8FA3A0", 1},
-    {"ui_color_text_accent", "ui.settings.color_text_accent", &Settings::uiColorTextAccent, "96DCB4", 1},
-    {"ui_color_button", "ui.settings.color_button", &Settings::uiColorButton, "295C4A", 2},
-    {"ui_color_button_text", "ui.settings.color_button_text", &Settings::uiColorButtonText, "16181C", 2},
-    {"ui_color_button2", "ui.settings.color_button2", &Settings::uiColorButton2, "24322F", 2},
-    {"ui_color_icon", "ui.settings.color_icon", &Settings::uiColorIcon, "EBF5F0", 2},
-    {"ui_color_accent", "ui.settings.color_accent", &Settings::uiColorAccent, "96DCB4", 3},
-    {"ui_color_correct", "ui.settings.color_correct", &Settings::uiColorCorrect, "78DCA0", 3},
-    {"ui_color_wrong", "ui.settings.color_wrong", &Settings::uiColorWrong, "F08C82", 3},
-    {"ui_color_partial", "ui.settings.color_partial", &Settings::uiColorPartial, "E8C46A", 3},
-    {"ui_color_draft", "ui.settings.color_draft", &Settings::uiColorDraft, "5B9BD5", 3},
-    {"ui_color_star", "ui.settings.color_star", &Settings::uiColorStar, "F2C14E", 3},
+    {"ui_color_bg", "ui.settings.color_bg", &Settings::uiColorBackground, "D8DDE3", 0},
+    {"ui_color_panel", "ui.settings.color_panel", &Settings::uiColorPanel, "F0F2F5", 0},
+    {"ui_color_input", "ui.settings.color_input", &Settings::uiColorInput, "E2E6EA", 0},
+    {"ui_color_border", "ui.settings.color_border", &Settings::uiColorBorder, "B0B9C2", 0},
+    {"ui_color_text", "ui.settings.color_text", &Settings::uiColorText, "1A1C1D", 1},
+    {"ui_color_text_muted", "ui.settings.color_text_muted", &Settings::uiColorTextMuted, "6A7278", 1},
+    {"ui_color_text_accent", "ui.settings.color_text_accent", &Settings::uiColorTextAccent, "8B0000", 1},
+    {"ui_color_button", "ui.settings.color_button", &Settings::uiColorButton, "C4CBD2", 2},
+    {"ui_color_button_text", "ui.settings.color_button_text", &Settings::uiColorButtonText, "1A1C1D", 2},
+    {"ui_color_button2", "ui.settings.color_button2", &Settings::uiColorButton2, "D8DEE3", 2},
+    {"ui_color_icon", "ui.settings.color_icon", &Settings::uiColorIcon, "3A434A", 2},
+    {"ui_color_scrollbar", "ui.settings.color_scrollbar", &Settings::uiColorScrollbar, "8D969D", 2},
+    {"ui_color_accent", "ui.settings.color_accent", &Settings::uiColorAccent, "B22222", 3},
+    {"ui_color_correct", "ui.settings.color_correct", &Settings::uiColorCorrect, "5C1010", 3},
+    {"ui_color_wrong", "ui.settings.color_wrong", &Settings::uiColorWrong, "D32F2F", 3},
+    {"ui_color_partial", "ui.settings.color_partial", &Settings::uiColorPartial, "A93226", 3},
+    {"ui_color_draft", "ui.settings.color_draft", &Settings::uiColorDraft, "3F7FBF", 3},
+    {"ui_color_star", "ui.settings.color_star", &Settings::uiColorStar, "D35400", 3},
 };
 
 std::string trimText(const std::string& text) {
@@ -491,6 +492,12 @@ void SettingsScreen::drawThemeApply() {
 }
 
 void SettingsScreen::drawTheme() {
+    // 主题页内容量会随展开状态大幅变化：放进独立滚动 child，并始终预留竖向滚动条。
+    // 这样展开到底后可以拖动页面或滚动条；固定预留宽度也能避免滚动条出现时横向重排。
+    if (ImGui::BeginChild("theme_settings_scroll", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None,
+                          ImGuiWindowFlags_AlwaysVerticalScrollbar)) {
+        ScrollDrag scrollDrag;
+
     // 主题配色不再往下跳页：五个分组都在这一页上「展开 / 收起」，点标题那一行就行。
     // 展开状态按位记在 themeOpen_ 里（位 0 底色 / 1 文字 / 2 控件 / 3 状态 / 4 预设与应用）。
     struct GroupRow {
@@ -530,6 +537,9 @@ void SettingsScreen::drawTheme() {
     ImGui::Spacing();
     ImGui::Separator();
     wrappedHint(context_.i18n().text("ui.settings.theme_expand_hint"));
+    ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().ItemSpacing.y + 12.0f));
+    }
+    ImGui::EndChild();
 }
 void SettingsScreen::drawPrompt() {
     const std::vector<PromptEntry>& prompts = context_.prompts();

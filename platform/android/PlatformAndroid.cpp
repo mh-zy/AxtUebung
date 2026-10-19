@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <atomic>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -27,6 +28,7 @@ constexpr const char* kLogTag = "AxtQuiz";
 AAssetManager* g_assetManager = nullptr;
 ANativeActivity* g_activity = nullptr;
 std::string g_dataDirectory;
+std::atomic<bool> g_backRequested{false};
 
 bool hasSuffix(const std::string& text, const std::string& suffix) {
     return text.size() >= suffix.size() &&
@@ -388,6 +390,14 @@ void syncSoftKeyboard(bool wantTextInput) {
     }
 }
 
+void requestBack() {
+    g_backRequested.store(true, std::memory_order_release);
+}
+
+bool takeBackRequest() {
+    return g_backRequested.exchange(false, std::memory_order_acq_rel);
+}
+
 void requestExit() {
     if (g_activity != nullptr) {
         ANativeActivity_finish(g_activity);
@@ -734,6 +744,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_axt_quiz_MainActivity_nativeOnText(JN
         quiz::render::addTextUtf8(utf8);
         env->ReleaseStringUTFChars(text, utf8);
     }
+}
+
+extern "C" JNIEXPORT void JNICALL Java_com_axt_quiz_MainActivity_nativeRequestBack(JNIEnv*,
+                                                                                   jclass) {
+    quiz::platform::android::requestBack();
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_axt_quiz_MainActivity_nativeOnKey(JNIEnv*, jclass,

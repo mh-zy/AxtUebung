@@ -159,14 +159,13 @@ ImGuiKey translateKeyCode(int32_t keyCode) {
     }
 }
 
-/// 「返回」键：不在首页就回首页，在首页就退出应用
+/// 「返回」：页面导航由 UiApp 统一处理；只有首页二次返回才退出。
 void handleBack(AppState* state) {
-    if (state->ui.screen() != quiz::ui::Screen::Home) {
-        state->context.saveProgress();
-        state->ui.setScreen(quiz::ui::Screen::Home);
+    if (state->ui.handleBack()) {
         state->firstFrame = true;
         return;
     }
+    state->context.saveProgress();
     quiz::platform::android::requestExit();
 }
 
@@ -217,7 +216,7 @@ int32_t handleInput(struct android_app* androidApp, AInputEvent* event) {
         const int32_t action = AKeyEvent_getAction(event);
         const bool pressed = action == AKEY_EVENT_ACTION_DOWN;
         if (keyCode == AKEYCODE_BACK && pressed) {
-            handleBack(state);
+            quiz::platform::android::requestBack();
             return 1;
         }
         // 软键盘送来的可打印字符：自己按 keyCode 映射（NDK 的 C 接口没有 getUnicodeChar）。
@@ -354,6 +353,10 @@ void android_main(struct android_app* androidApp) {
                 quiz::logInfo("应用退出");
                 return;
             }
+        }
+
+        if (quiz::platform::android::takeBackRequest()) {
+            handleBack(state);
         }
 
         if (!state->windowReady) {

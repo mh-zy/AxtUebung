@@ -5,6 +5,7 @@
 #include <cstdio>
 
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "quiz/platform/Platform.h"
 #include "quiz/render/ImGuiRenderer.h"
 #include "quiz/ui/UiScroll.h"
@@ -21,6 +22,20 @@ ImU32 g_buttonTextRgb = 0;
 /// 0xRRGGBB → ImU32（不透明）
 ImU32 toImU32(unsigned int rgb) {
     return IM_COL32((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF, 255);
+}
+
+/// 按 t=0..1 混合两个颜色；滚动条轨道用它从面板色过渡到滑块色。
+ImU32 mixColor(ImU32 a, ImU32 b, float t) {
+    t = std::clamp(t, 0.0f, 1.0f);
+    const auto channel = [t](int from, int to) {
+        return static_cast<int>(static_cast<float>(from) +
+                                (static_cast<float>(to - from) * t) + 0.5f);
+    };
+    return IM_COL32(
+        channel((a >> IM_COL32_R_SHIFT) & 0xFF, (b >> IM_COL32_R_SHIFT) & 0xFF),
+        channel((a >> IM_COL32_G_SHIFT) & 0xFF, (b >> IM_COL32_G_SHIFT) & 0xFF),
+        channel((a >> IM_COL32_B_SHIFT) & 0xFF, (b >> IM_COL32_B_SHIFT) & 0xFF),
+        channel((a >> IM_COL32_A_SHIFT) & 0xFF, (b >> IM_COL32_A_SHIFT) & 0xFF));
 }
 
 /// 派生色的统一做法：先看底色是亮还是暗，再决定往哪个方向推。
@@ -418,6 +433,24 @@ bool modeButton(const char* id, const char* svg, const std::string& label, bool 
     return clicked;
 }
 
+/// 圆角屏右侧安全边距：顶部右对齐文字 / 图标不要贴到屏幕圆角上。
+float topRightSafeInset() {
+    return std::max(12.0f, ImGui::GetFontSize() * 0.70f);
+}
+
+/// 顶部图标 + 两字说明。说明直接画在图标下方，不依赖手机没有的悬停提示。
+bool headerIconButton(const char* id, const char* svg, const std::string& caption) {
+    const ImVec2 iconAt = ImGui::GetCursorScreenPos();
+    const bool clicked = iconButton(id, svg, caption);
+    const float side = iconButtonSide();
+    const float textWidth = ImGui::CalcTextSize(caption.c_str()).x;
+    ImGui::GetWindowDrawList()->AddText(
+        ImVec2(iconAt.x + (side - textWidth) * 0.5f,
+               iconAt.y + side + 2.0f),
+        ImGui::GetColorU32(ImGuiCol_TextDisabled), caption.c_str());
+    return clicked;
+}
+
 /// 题库卡片：**整张卡都是点击区域**（以前只有标题那一行能点，框里空白处点了没反应）。
 /// 内容全部自己画，所以高度、内边距都可控，也不会在卡片里冒出滚动条。
 /// 题库卡片被点了哪一块
@@ -663,8 +696,85 @@ UiApp::UiApp(AppContext& context) : context_(context), settingsScreen_(context) 
     });
 }
 
+bool UiApp::handleBack() {
+    ImGuiContext* context = ImGui::GetCurrentContext();
+    if (context == nullptr) {
+        return false;
+    }
+
+    // 软键盘先收；再关闭最上层弹窗；最后才做页面后退。
+    if (ImGui::GetIO().WantTextInput) {
+        pendingBackDismissText_ = true;
+        return true;
+    }
+    if (context->OpenPopupStack.Size > 0) {
+        pendingBackClosePopup_ = true;
+        return true;
+    }
+
+    if (screen_ == Screen::Settings) {
+        context_.saveSettings();
+        if (settingsScreen_.backToRoot()) {
+            return true;
+        }
+        screen_ = Screen::Home;
+        return true;
+    }
+
+    if (screen_ == Screen::Quiz) {
+        if (context_.examActive()) {
+            examExitAsk_ = true;
+            return true;
+        }
+        cancelAutoNext();
+        context_.saveProgress();
+        screen_ = quizParent_ == Screen::Quiz ? Screen::Home : quizParent_;
+        return true;
+    }
+
+    if (screen_ == Screen::Result) {
+        context_.saveProgress();
+        screen_ = resultParent_ == Screen::Result ? Screen::Home : resultParent_;
+        return true;
+    }
+
+    if (screen_ == Screen::Stats || screen_ == Screen::Finished ||
+        screen_ == Screen::ExamReady || screen_ == Screen::ExamResult) {
+        screen_ = Screen::Home;
+        return true;
+    }
+
+    if (screen_ == Screen::Home) {
+        if (exitArmed_) {
+            return false;   // 平台退出
+        }
+        exitArmed_ = true;
+        exitArmTimer_ = 2.0f;
+        context_.setMessage(context_.i18n().text("ui.common.back_again_exit"));
+        return true;
+    }
+    return false;
+}
+
 void UiApp::draw(float deltaSeconds) {
     frameDelta_ = deltaSeconds;
+    if (pendingBackDismissText_) {
+        ImGui::ClearActiveID();
+        pendingBackDismissText_ = false;
+    }
+    if (pendingBackClosePopup_) {
+        ImGuiContext& g = *GImGui;
+        if (g.OpenPopupStack.Size > 0) {
+            ImGui::ClosePopupToLevel(g.OpenPopupStack.Size - 1, true);
+        }
+        pendingBackClosePopup_ = false;
+    }
+    if (exitArmTimer_ > 0.0f) {
+        exitArmTimer_ -= deltaSeconds;
+        if (exitArmTimer_ <= 0.0f) {
+            exitArmed_ = false;
+        }
+    }
     pollPendingDialog();   // 上一帧发起的系统对话框（导入 / 导出）有结果了就在这里收尾
     applyTheme();   // 每帧套用设置里的配色（改完立刻生效）
     // 计时口径：只有刷题页面算「做题时长」（首页 / 设置 / 统计页都不算）
@@ -761,6 +871,17 @@ void UiApp::draw(float deltaSeconds) {
         ImGui::EndPopup();
     }
 
+    if (examExitAsk_) {
+        ImGui::OpenPopup("##exam_exit_ask");
+        examExitAsk_ = false;
+    }
+    if (ImGui::BeginPopupModal("##exam_exit_ask", nullptr,
+                               ImGuiWindowFlags_AlwaysAutoResize |
+                                   ImGuiWindowFlags_NoTitleBar)) {
+        drawExamExitAsk();
+        ImGui::EndPopup();
+    }
+
     if (showIssues_) {
         ImGui::OpenPopup(context_.i18n().text("ui.home.issues"));
         showIssues_ = false;
@@ -854,23 +975,34 @@ void UiApp::drawHome() {
     //    ImGui::EndCombo();
     //}
 
-    // 顶部两个图标靠右：量一下它们占多宽，再把行列位置挪到右边（和标题同一行）
-    const float topButtonsWidth = iconButtonSide() * 3.0f + ImGui::GetStyle().ItemSpacing.x * 2.0f;
-    ImGui::SameLine(std::max(contentWidth - topButtonsWidth, 0.0f));
-    if (iconButton("##open_stats", "icons/stats.svg", context_.i18n().text("ui.home.stats"))) {
+    // 顶部三个图标靠右；圆角屏右侧留安全宽度，每个图标下面直接画两字说明。
+    const std::string statsCaption = context_.i18n().text("ui.home.short_stats");
+    const std::string settingsCaption = context_.i18n().text("ui.home.short_settings");
+    const std::string uploadCaption = context_.i18n().text("ui.home.short_upload");
+    const float iconSide = iconButtonSide();
+    const float textLine = ImGui::GetTextLineHeight();
+    const float headerGap = ImGui::GetStyle().ItemSpacing.x;
+    const float captionWidths[3] = {
+        std::max(iconSide, ImGui::CalcTextSize(statsCaption.c_str()).x),
+        std::max(iconSide, ImGui::CalcTextSize(settingsCaption.c_str()).x),
+        std::max(iconSide, ImGui::CalcTextSize(uploadCaption.c_str()).x),
+    };
+    const float topButtonsWidth = captionWidths[0] + captionWidths[1] + captionWidths[2] + headerGap * 2.0f;
+    const float headerRowY = ImGui::GetCursorPosY();
+    ImGui::SameLine(std::max(contentWidth - topButtonsWidth - topRightSafeInset(), 0.0f));
+    if (headerIconButton("##open_stats", "icons/stats.svg", statsCaption)) {
         screen_ = Screen::Stats;
     }
-    ImGui::SameLine();
-    if (iconButton("##open_settings", "icons/settings.svg",
-                   context_.i18n().text("ui.home.settings"))) {
+    ImGui::SameLine(0.0f, headerGap + std::max(0.0f, captionWidths[0] - iconSide));
+    if (headerIconButton("##open_settings", "icons/settings.svg", settingsCaption)) {
         settingsScreen_.reset();
         screen_ = Screen::Settings;
     }
-    ImGui::SameLine();
-    if (iconButton("##upload_bank", "icons/upload.svg",
-                   context_.i18n().text("ui.home.upload"))) {
+    ImGui::SameLine(0.0f, headerGap + std::max(0.0f, captionWidths[1] - iconSide));
+    if (headerIconButton("##upload_bank", "icons/upload.svg", uploadCaption)) {
         beginImport();   // 弹系统文件对话框（异步），选中的题库拷进 data/banks
     }
+    ImGui::SetCursorPos(ImVec2(0.0f, headerRowY + iconSide + textLine + 4.0f));
 
     ImGui::Separator();
     ImGui::Text("%s", context_.i18n().text("ui.home.bank_list"));
@@ -959,6 +1091,7 @@ void UiApp::drawHome() {
                                 break;
                             }
                         }
+                        quizParent_ = Screen::Home;
                         screen_ = Screen::Quiz;
                     }
                 }
@@ -1030,6 +1163,7 @@ void UiApp::drawHome() {
     if (primaryButton(mainLabel, ImVec2(-1.0f, controlHeight()), colorAccentRgb_, mainEnabled)) {
         if (examRunning) {
             cancelAutoNext();
+            quizParent_ = Screen::Home;
             screen_ = Screen::Quiz;   // 卷还在内存里：倒计时照走，答案也在
         } else if (examMode) {
             openExamPicker();
@@ -1249,6 +1383,7 @@ void UiApp::startBank(int index) {
     if (!context_.openBank(index, AppContext::OrderSource::Home)) {
         return;
     }
+    quizParent_ = Screen::Home;
     screen_ = Screen::Quiz;
 }
 
@@ -1416,15 +1551,20 @@ void UiApp::drawQuiz() {
     if (iconButton("##quiz_back", "icons/home.svg",
                    context_.i18n().text("ui.quiz.back_home"))) {
         cancelAutoNext();
-        context_.saveProgress();
-        screen_ = Screen::Home;
+        if (examRunning) {
+            examExitAsk_ = true;
+        } else {
+            context_.saveProgress();
+            screen_ = Screen::Home;
+        }
     }
     ImGui::SameLine();
     ImGui::Text("%s", banks[static_cast<size_t>(index)].bank.meta.title.c_str());
     // 右上角「第 x / y 题」本身就是个按钮：点它也能开题目总览（和顶部那个图标重复，冗余设计）
     const ImVec2 progressPad(6.0f, 2.0f);
     const float progressButtonWidth = ImGui::CalcTextSize(progressText.c_str()).x + progressPad.x * 2.0f;
-    ImGui::SameLine(std::max(headerWidth - progressButtonWidth - 4.0f, 0.0f));
+    ImGui::SameLine(
+        std::max(headerWidth - progressButtonWidth - 4.0f - topRightSafeInset(), 0.0f));
     const ImU32 headerBg = ImGui::GetColorU32(ImGuiCol_WindowBg);
     ImVec4 headerHover = ImGui::ColorConvertU32ToFloat4(shadeColor(headerBg, 0.20f));
     ImVec4 headerActive = ImGui::ColorConvertU32ToFloat4(shadeColor(headerBg, 0.40f));
@@ -1758,6 +1898,12 @@ void UiApp::drawQuiz() {
         if (ImGui::Button(context_.i18n().text("ui.quiz.overview"), ImVec2(navWidth, 0.0f))) {
             openOverviewPopup();
         }
+    } else if (session.isReciteMode()) {
+        if (ImGui::Button(context_.i18n().text("ui.quiz.back_home"), ImVec2(navWidth, 0.0f))) {
+            cancelAutoNext();
+            context_.saveProgress();
+            screen_ = Screen::Home;
+        }
     } else if (context_.hasExamSummary()) {
         if (ImGui::Button(context_.i18n().text("ui.exam.review"), ImVec2(navWidth, 0.0f))) {
             cancelAutoNext();
@@ -1766,6 +1912,7 @@ void UiApp::drawQuiz() {
     } else if (ImGui::Button(context_.i18n().text("ui.result.title"), ImVec2(navWidth, 0.0f))) {
         cancelAutoNext();
         context_.saveProgress();
+        resultParent_ = Screen::Quiz;
         screen_ = Screen::Result;
     }
 
@@ -2100,7 +2247,13 @@ void UiApp::drawPaper(const QuestionBank& bank, const std::vector<int>& group) {
     }
     if (!examRunning) {
         ImGui::SameLine();
-        if (context_.hasExamSummary()) {
+        if (session.isReciteMode()) {
+            if (ImGui::Button(context_.i18n().text("ui.quiz.back_home"), ImVec2(navWidth, 0.0f))) {
+                cancelAutoNext();
+                context_.saveProgress();
+                screen_ = Screen::Home;
+            }
+        } else if (context_.hasExamSummary()) {
             if (ImGui::Button(context_.i18n().text("ui.exam.review"), ImVec2(navWidth, 0.0f))) {
                 cancelAutoNext();
                 screen_ = Screen::ExamResult;
@@ -2108,6 +2261,7 @@ void UiApp::drawPaper(const QuestionBank& bank, const std::vector<int>& group) {
         } else if (ImGui::Button(context_.i18n().text("ui.result.title"), ImVec2(navWidth, 0.0f))) {
             cancelAutoNext();
             context_.saveProgress();
+            resultParent_ = Screen::Quiz;
             screen_ = Screen::Result;
         }
     }
@@ -2410,6 +2564,7 @@ void UiApp::drawResult() {
                                   ImVec2(0.0f, controlHeight() * 0.8f))) {
                 cancelAutoNext();
                 session.jumpTo(static_cast<int>(i));
+                quizParent_ = Screen::Result;
                 screen_ = Screen::Quiz;
             }
             ImGui::PopID();
@@ -2428,6 +2583,7 @@ void UiApp::drawResult() {
         session.restartWrongOnly();
         context_.saveProgress();
         context_.restartTimer();
+        quizParent_ = Screen::Result;
         screen_ = Screen::Quiz;
     }
     ImGui::SameLine();
@@ -2546,11 +2702,13 @@ void UiApp::drawFinished() {
     if (primaryButton(texts.text("ui.finish.again"), ImVec2(-1.0f, controlHeight()), colorAccentRgb_)) {
         cancelAutoNext();
         context_.openBank(bankIndex, AppContext::OrderSource::Home);   // 重新生成本轮计划
+        quizParent_ = Screen::Finished;
         screen_ = Screen::Quiz;
     }
     const float navWidth =
         (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
     if (ImGui::Button(texts.text("ui.finish.result"), ImVec2(navWidth, 0.0f))) {
+        resultParent_ = Screen::Finished;
         screen_ = Screen::Result;
     }
     ImGui::SameLine();
@@ -2793,6 +2951,7 @@ void UiApp::drawStats() {
                 selectedBank_ = i;
                 // 统计页的明细按「设置 → 答题 → 刷题顺序」来，和首页模式分开
                 context_.openBank(i, AppContext::OrderSource::Stats);
+                quizParent_ = Screen::Stats;
                 screen_ = Screen::Quiz;
             }
             if (ImGui::IsItemActive()) {
@@ -3126,7 +3285,24 @@ void UiApp::drawExamPicker() {
         // 先到准备页看一眼规格与规则，点「开始答题」才真正开考（倒计时也从那一刻起算）
         pendingExam_ = chosen;
         ImGui::CloseCurrentPopup();
+        quizParent_ = Screen::Home;
         screen_ = Screen::ExamReady;
+    }
+}
+
+/// 考试中返回：确认放弃本场考试（不写进度）。
+void UiApp::drawExamExitAsk() {
+    const i18n::I18n& texts = context_.i18n();
+    ImGui::TextWrapped("%s", texts.text("ui.exam.exit_ask"));
+    ImGui::Spacing();
+    if (primaryButton(texts.text("ui.exam.exit"), ImVec2(180.0f, 0.0f), colorAccentRgb_)) {
+        context_.abandonExam();
+        screen_ = quizParent_ == Screen::Quiz ? Screen::Home : quizParent_;
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button(texts.text("ui.common.cancel"), ImVec2(160.0f, 0.0f))) {
+        ImGui::CloseCurrentPopup();
     }
 }
 
@@ -3279,6 +3455,7 @@ void UiApp::drawExamResult() {
     if (jumpIndex >= 0) {
         cancelAutoNext();
         context_.session().jumpTo(jumpIndex);
+        quizParent_ = Screen::ExamResult;
         screen_ = Screen::Quiz;   // 交过卷的题会把判定与解析都显示出来
     }
 
@@ -3382,6 +3559,7 @@ void UiApp::drawExamReady() {
         std::string error;
         if (context_.startExam(pendingExam_, error)) {
             cancelAutoNext();
+            quizParent_ = Screen::ExamReady;
             screen_ = Screen::Quiz;
         } else {
             context_.setMessage(error);
@@ -3423,14 +3601,17 @@ void UiApp::applyTheme() {
     const Settings& s = context_.settings();
     unsigned int rgb = 0;
 
-    const ImU32 bg = Settings::parseHexColor(s.uiColorBackground, rgb) ? toImU32(rgb) : IM_COL32(15, 23, 28, 255);
-    const ImU32 panel = Settings::parseHexColor(s.uiColorPanel, rgb) ? toImU32(rgb) : IM_COL32(23, 31, 36, 255);
-    const ImU32 text = Settings::parseHexColor(s.uiColorText, rgb) ? toImU32(rgb) : IM_COL32(235, 245, 240, 255);
-    const ImU32 button = Settings::parseHexColor(s.uiColorButton, rgb) ? toImU32(rgb) : IM_COL32(41, 92, 74, 255);
-    colorAccentRgb_ = Settings::parseHexColor(s.uiColorAccent, rgb) ? rgb : 0x96DCB4;
-    colorCorrectRgb_ = Settings::parseHexColor(s.uiColorCorrect, rgb) ? rgb : 0x78DCA0;
-    colorWrongRgb_ = Settings::parseHexColor(s.uiColorWrong, rgb) ? rgb : 0xF08C82;
+    const ImU32 bg = Settings::parseHexColor(s.uiColorBackground, rgb) ? toImU32(rgb) : IM_COL32(216, 221, 227, 255);
+    const ImU32 panel = Settings::parseHexColor(s.uiColorPanel, rgb) ? toImU32(rgb) : IM_COL32(240, 242, 245, 255);
+    const ImU32 text = Settings::parseHexColor(s.uiColorText, rgb) ? toImU32(rgb) : IM_COL32(26, 28, 29, 255);
+    const ImU32 button = Settings::parseHexColor(s.uiColorButton, rgb) ? toImU32(rgb) : IM_COL32(196, 203, 210, 255);
+    colorAccentRgb_ = Settings::parseHexColor(s.uiColorAccent, rgb) ? rgb : 0xB22222;
+    colorCorrectRgb_ = Settings::parseHexColor(s.uiColorCorrect, rgb) ? rgb : 0x5C1010;
+    colorWrongRgb_ = Settings::parseHexColor(s.uiColorWrong, rgb) ? rgb : 0xD32F2F;
     const ImU32 accent = toImU32(colorAccentRgb_);
+    const ImU32 muted = Settings::parseHexColor(s.uiColorTextMuted, rgb)
+                            ? toImU32(rgb)
+                            : shadeColor(text, -0.45f);
 
     ImVec4* colors = ImGui::GetStyle().Colors;
     colors[ImGuiCol_WindowBg] = ImGui::ColorConvertU32ToFloat4(bg);
@@ -3447,10 +3628,20 @@ void UiApp::applyTheme() {
     colors[ImGuiCol_HeaderHovered] = ImGui::ColorConvertU32ToFloat4(shadeColor(button, 0.35f));
     colors[ImGuiCol_HeaderActive] = ImGui::ColorConvertU32ToFloat4(shadeColor(button, 0.60f));
     colors[ImGuiCol_Text] = ImGui::ColorConvertU32ToFloat4(text);
-    colors[ImGuiCol_TextDisabled] =
-        ImGui::ColorConvertU32ToFloat4(Settings::parseHexColor(s.uiColorTextMuted, rgb)
-                                            ? toImU32(rgb)
-                                            : shadeColor(text, -0.45f));
+    colors[ImGuiCol_TextDisabled] = ImGui::ColorConvertU32ToFloat4(muted);
+
+    // 滚动条：普通滑块用独立配置色；轨道从面板色向滑块色混合；
+    // 悬停 / 拖动沿用主题强调色，保证和整套配色一致。
+    const ImU32 scrollbar =
+        Settings::parseHexColor(s.uiColorScrollbar, rgb)
+            ? toImU32(rgb)
+            : mixColor(shadeColor(panel, 0.55f), muted, 0.45f);
+    colors[ImGuiCol_ScrollbarBg] =
+        ImGui::ColorConvertU32ToFloat4(mixColor(panel, scrollbar, 0.22f));
+    colors[ImGuiCol_ScrollbarGrab] = ImGui::ColorConvertU32ToFloat4(scrollbar);
+    colors[ImGuiCol_ScrollbarGrabHovered] = ImGui::ColorConvertU32ToFloat4(accent);
+    colors[ImGuiCol_ScrollbarGrabActive] =
+        ImGui::ColorConvertU32ToFloat4(shadeColor(accent, 0.25f));
     // 控件：次按钮（列表 / 下拉 / 选中行）和进度条各有自己的颜色
     if (Settings::parseHexColor(s.uiColorButton2, rgb)) {
         const ImU32 button2 = toImU32(rgb);
@@ -3458,10 +3649,10 @@ void UiApp::applyTheme() {
         colors[ImGuiCol_HeaderHovered] = ImGui::ColorConvertU32ToFloat4(shadeColor(button2, 0.35f));
         colors[ImGuiCol_HeaderActive] = ImGui::ColorConvertU32ToFloat4(shadeColor(button2, 0.60f));
     }
-    colorPartialRgb_ = Settings::parseHexColor(s.uiColorPartial, rgb) ? rgb : 0xE8C46A;
-    colorStarRgb_ = Settings::parseHexColor(s.uiColorStar, rgb) ? rgb : 0xF2C14E;
+    colorPartialRgb_ = Settings::parseHexColor(s.uiColorPartial, rgb) ? rgb : 0xA93226;
+    colorStarRgb_ = Settings::parseHexColor(s.uiColorStar, rgb) ? rgb : 0xD35400;
     colorTextAccentRgb_ = Settings::parseHexColor(s.uiColorTextAccent, rgb) ? rgb : colorAccentRgb_;
-    colorButtonTextRgb_ = Settings::parseHexColor(s.uiColorButtonText, rgb) ? rgb : 0x16181C;
+    colorButtonTextRgb_ = Settings::parseHexColor(s.uiColorButtonText, rgb) ? rgb : 0x1A1C1D;
     colorIconRgb_ = Settings::parseHexColor(s.uiColorIcon, rgb) ? rgb : colorAccentRgb_;
     colorDraftRgb_ = Settings::parseHexColor(s.uiColorDraft, rgb) ? rgb : colorPartialRgb_;
     g_iconRgb = toImU32(colorIconRgb_);

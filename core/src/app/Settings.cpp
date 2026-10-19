@@ -66,6 +66,7 @@ std::string Settings::serialize() const {
     out += "ui_color_button_text = " + uiColorButtonText + "\n";
     out += "ui_color_button2 = " + uiColorButton2 + "\n";
     out += "ui_color_icon = " + uiColorIcon + "\n";
+    out += "ui_color_scrollbar = " + uiColorScrollbar + "\n";
     out += "ui_color_partial = " + uiColorPartial + "\n";
     out += "ui_color_draft = " + uiColorDraft + "\n";
     out += "ui_color_star = " + uiColorStar + "\n";
@@ -175,6 +176,8 @@ Settings Settings::parse(const std::string& text) {
             result.uiColorButton2 = io::trim(line.value);
         } else if (line.key == "ui_color_icon") {
             result.uiColorIcon = io::trim(line.value);
+        } else if (line.key == "ui_color_scrollbar") {
+            result.uiColorScrollbar = io::trim(line.value);
         } else if (line.key == "ui_color_draft") {
             result.uiColorDraft = io::trim(line.value);
         } else if (line.key == "ui_color_partial") {

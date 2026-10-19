@@ -653,8 +653,10 @@ void testSettings() {
 
     quiz::Settings colored;
     colored.uiColorAccent = "123456";
+    colored.uiColorScrollbar = "8D969D";
     const quiz::Settings coloredLoaded = quiz::Settings::parse(colored.serialize());
-    CHECK_EQ(coloredLoaded.uiColorAccent, std::string("123456"));}
+    CHECK_EQ(coloredLoaded.uiColorAccent, std::string("123456"));
+    CHECK_EQ(coloredLoaded.uiColorScrollbar, std::string("8D969D"));}
 
 
 void testThemePresets() {
@@ -730,13 +732,13 @@ void testThemePresetFile() {
     std::fclose(file);
 
     const std::vector<std::string>& keys = quiz::themeColorKeys();
-    CHECK_EQ(keys.size(), static_cast<size_t>(17));
+    CHECK_EQ(keys.size(), static_cast<size_t>(18));
 
     const std::vector<quiz::ThemePreset> presets = quiz::parseThemePresets(text);
     CHECK(presets.size() >= static_cast<size_t>(5));
     for (const quiz::ThemePreset& preset : presets) {
         CHECK(!preset.name.empty());
-        CHECK_EQ(preset.colors.size(), keys.size());   // 每套都要写全 17 项
+        CHECK_EQ(preset.colors.size(), keys.size());   // 每套都要写全 18 项
         for (const std::string& key : keys) {
             CHECK(!preset.color(key).empty());
         }
