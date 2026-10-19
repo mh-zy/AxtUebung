@@ -1,0 +1,19 @@
+<svg
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <!-- 导出特定标签题：托盘沿用 software-download 的那套，箭头换成标签 -->
+  <path
+    fill-rule="evenodd"
+    clip-rule="evenodd"
+    d="M3.5 4H14.2L19.5 8.8L14.2 13.6H3.5V4ZM7 7.6C6.34 7.6 5.8 8.14 5.8 8.8C5.8 9.46 6.34 10 7 10C7.66 10 8.2 9.46 8.2 8.8C8.2 8.14 7.66 7.6 7 7.6Z"
+    fill="currentColor"
+  />
+  <path
+    d="M4 14H6V18H18V14H20V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V14Z"
+    fill="currentColor"
+  />
+</svg>

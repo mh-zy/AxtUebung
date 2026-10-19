@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  这里只放「系统读取」的文字（桌面图标名）。
+  界面里的文案全部走语言包（assets/lang/*.lang），见 core/src/i18n/I18n.cpp。
+-->
+<resources>
+    <string name="app_name">Axt Quiz</string>
+</resources>

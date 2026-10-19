@@ -1,0 +1,54 @@
+# 构建产物
+build/
+app/build/
+app/.cxx/
+out/
+dist/
+.gradle/
+.kotlin/
+cmake-build-*/
+
+# 本地环境
+local.properties
+local.properties*
+*.user
+*.suo
+
+# 运行时数据、题库进度、日志与临时文件
+data/
+work/
+*.log
+*.ppm
+*.tmp
+
+# 公开仓库不附带题库；保留本地开发文件，但不进入 Git
+assets/banks/*.quiz
+
+# 已替换或未使用的旧图标，不进入公开仓库
+assets/icons/chevron-left.svg
+assets/icons/move-right.svg
+assets/icons/play-track-next.svg
+assets/icons/redo.svg
+assets/icons/software-download.svg
+assets/icons/software-upload.svg
+
+# 备份与编辑器/系统文件
+backups/
+*.bak-*
+.vs/
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# 内部交接和工作笔记，不进入公开仓库
+PLANS.md
+docs/交接说明.md
+
+# 二进制发行物与签名材料
+*.apk
+*.aab
+*.jks
+*.keystore
+keystore.properties

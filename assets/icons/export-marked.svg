@@ -1,0 +1,17 @@
+<svg
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <!-- 导出收藏题：托盘沿用 software-download 的那套，箭头换成星标（PLANS.md 原话） -->
+  <path
+    d="M12 3.65L13.37 7.03L17.04 7.39L14.23 9.77L15.02 13.37L12 11.42L8.98 13.37L9.77 9.77L6.96 7.39L10.63 7.03Z"
+    fill="currentColor"
+  />
+  <path
+    d="M4 14H6V18H18V14H20V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V14Z"
+    fill="currentColor"
+  />
+</svg>

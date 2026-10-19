@@ -1,0 +1,21 @@
+<svg
+  width="24"
+  height="24"
+  viewBox="0 0 24 24"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <!-- 导出错题：托盘沿用 software-download 的那套，中间的箭头换成叉 -->
+  <path
+    d="M14.16 12.28L15.78 10.66L9.84 4.72L8.22 6.34Z"
+    fill="currentColor"
+  />
+  <path
+    d="M15.78 6.34L14.16 4.72L8.22 10.66L9.84 12.28Z"
+    fill="currentColor"
+  />
+  <path
+    d="M4 14H6V18H18V14H20V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V14Z"
+    fill="currentColor"
+  />
+</svg>

@@ -1,0 +1,6 @@
+# 版本目录：本工程 Android 侧只需要 AGP
+[versions]
+agp = "9.4.1"
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
