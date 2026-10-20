@@ -9,7 +9,7 @@ code = zh-CN
 name = 简体中文
 
 [text]
-ui.app_title = 刷题
+ui.app_title = 题斩
 ui.home.bank_list = 题库列表
 ui.home.progress_summary = 已答 {answered}/{total}，正确 {correct}
 ui.home.bank_line = {file} ｜ 共 {total} 题 ｜ {lang}

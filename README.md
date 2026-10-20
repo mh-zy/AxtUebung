@@ -1,8 +1,12 @@
-# Axt 刷题（AxtUebung）
+# 题斩（AxeQuiz）
+
+中文名“题斩”，英文名“AxeQuiz”，项目兜底名“AxtUebung”。
+
+命名规则见 [docs/命名规范.md](docs/命名规范.md)。
 
 一个本地优先、离线运行的刷题应用。Windows 与 Android 共用同一套 C++ 核心，支持固定格式题库、多种刷题模式、材料题、考试模式、进度统计以及通过系统文件选择器导入导出。
 
-**当前版本：0.2.2（内测准备中）**  
+**当前版本：0.2.3（内测中）**  
 开发者：mh-zy（@gcw_7wG3NXCK）  
 联系邮箱：jytc4399@163.com  
 开源仓库：[AtomGit](https://atomgit.com/gcw_7wG3NXCK/AxtUebing)
@@ -23,16 +27,16 @@
 
 更多截图：
 
-| 刷题 | 错题 | 结果 |
-| --- | --- | --- |
+| 刷题                          | 错题                           | 结果                            |
+| --------------------------- | ---------------------------- | ----------------------------- |
 | ![](docs/images/2-quiz.png) | ![](docs/images/3-wrong.png) | ![](docs/images/4-result.png) |
 
 ## 平台状态
 
-| 平台 | 状态 |
-| --- | --- |
+| 平台      | 状态                           |
+| ------- | ---------------------------- |
 | Android | 主要使用目标；0.2.2 已在模拟器验证首页与设置主题页 |
-| Windows | 共用核心与测试开发端 |
+| Windows | 共用核心与测试开发端                   |
 
 Windows 版适合开发、题库制作和桌面使用；正式内测以 Android 为主。
 
@@ -95,6 +99,44 @@ powershell -ExecutionPolicy Bypass -File tools\build-android.ps1 -Install
 
 > 当前 `release` 构建配置使用本机 Android 调试密钥，仅适合侧载测试。公开二进制发行前应替换为项目自己的签名密钥，且不得把 keystore 或密码提交到仓库。
 
+修改根目录 `axt-app-icon.png` 后，重新生成 Android 桌面图标：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\build-app-icons.ps1
+```
+
+### 发布打包与 AtomGit 上传
+
+预览发布流程，不构建、不写文件：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\release.ps1 -DryRun -AllowDirty
+```
+
+生成发布包：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\release.ps1 -ExpectedVersion 0.2.3
+```
+
+脚本默认要求 `Version.h` 与 `app/build.gradle.kts` 的版本一致、Git 工作区干净，并生成：
+
+```text
+dist\AxtUebung-<version>.apk
+dist\AxtUebung-<version>-windows-x64.zip
+dist\AxtUebung-<version>-SHA256SUMS.txt
+dist\AxtUebung-<version>-RELEASE.md
+```
+
+上传提交和标签到 AtomGit：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\upload-atomgit.ps1 `
+  -StageAll -Message "Release 0.2.3" -Tag v0.2.3 -RunTests
+```
+
+上传脚本不会强推，也不会自动暂存，除非明确写 `-StageAll`。它只推送 Git 提交与标签；APK、ZIP 等二进制附件仍需在 AtomGit 的发布页单独上传。
+
 ## 使用
 
 普通用户请先阅读 [用户手册.txt](用户手册.txt)。
@@ -145,12 +187,12 @@ Windows 命令行可以校验题库：
 
 ## 本地数据
 
-| 内容 | Windows | Android |
-| --- | --- | --- |
-| 用户题库 | `<程序目录>/data/banks/` | 应用私有目录 `files/banks/` |
-| 进度 | `<程序目录>/data/progress/` | 应用私有目录 `files/progress/` |
-| 导出 | `<程序目录>/data/export/` | 应用私有目录 `files/export/` 或用户选择的位置 |
-| 设置 | `<程序目录>/data/settings.txt` | 应用私有目录 `files/settings.txt` |
+| 内容   | Windows                    | Android                         |
+| ---- | -------------------------- | ------------------------------- |
+| 用户题库 | `<程序目录>/data/banks/`       | 应用私有目录 `files/banks/`           |
+| 进度   | `<程序目录>/data/progress/`    | 应用私有目录 `files/progress/`        |
+| 导出   | `<程序目录>/data/export/`      | 应用私有目录 `files/export/` 或用户选择的位置 |
+| 设置   | `<程序目录>/data/settings.txt` | 应用私有目录 `files/settings.txt`     |
 
 卸载或清除应用数据会删除本地进度。重要题库和进度请先导出备份。
 

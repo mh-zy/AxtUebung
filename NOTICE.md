@@ -13,7 +13,7 @@
 
 建议致谢文字：
 
-> 本项目使用了 mh-zy（@gcw_7wG3NXCK）开发的 Axt 刷题（AxtUebung）。
+> 本项目使用了 mh-zy（@gcw_7wG3NXCK）开发的题斩 / AxeQuiz（项目兜底名 AxtUebung）。
 
 ## English
 
@@ -25,4 +25,4 @@ These attribution and commercial-notification requests are strong requests from 
 
 Suggested credit:
 
-> This project uses AxtUebung, developed by mh-zy (@gcw_7wG3NXCK).
+> This project uses AxeQuiz (project fallback name AxtUebung), developed by mh-zy (@gcw_7wG3NXCK).

@@ -63,8 +63,14 @@ Write-Host "执行 gradlew $task" -ForegroundColor DarkGray
 # Gradle 守护进程会占住 stdout（管道里看起来像卡住），所以先重定向到文件再回显尾部
 $logPath = Join-Path $projectRoot "build\gradle-$($variant.ToLower()).log"
 New-Item -ItemType Directory -Force -Path (Split-Path $logPath -Parent) | Out-Null
-& "$projectRoot\gradlew.bat" $task --console=plain *> $logPath
-$code = $LASTEXITCODE
+$previousErrorAction = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+try {
+    & "$projectRoot\gradlew.bat" $task --console=plain *> $logPath
+    $code = $LASTEXITCODE
+} finally {
+    $ErrorActionPreference = $previousErrorAction
+}
 Get-Content $logPath -Tail 25
 if ($code -ne 0) {
     throw "Gradle 构建失败，退出码 $code（完整日志：$logPath）"

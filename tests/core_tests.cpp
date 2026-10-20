@@ -534,16 +534,16 @@ void testI18n() {
     std::printf("语言包\n");
     quiz::i18n::I18n i18n;
     CHECK(i18n.usingBuiltin());
-    CHECK_EQ(std::string(i18n.text("ui.app_title")), std::string("刷题"));
+    CHECK_EQ(std::string(i18n.text("ui.app_title")), std::string("AxtUebung"));
     CHECK_EQ(std::string(i18n.text("不存在的键")), std::string("不存在的键"));
 
     const std::string pack =
         "[lang]\ncode = en\nname = English\n"
-        "[text]\nui.app_title = Quiz\nui.home.start = Start\n";
+        "[text]\nui.app_title = AxeQuiz\nui.home.start = Start\n";
     std::string error;
     CHECK(i18n.loadPackText(pack, "en.lang", &error));
     CHECK_EQ(i18n.language(), std::string("en"));
-    CHECK_EQ(std::string(i18n.text("ui.app_title")), std::string("Quiz"));
+    CHECK_EQ(std::string(i18n.text("ui.app_title")), std::string("AxeQuiz"));
     CHECK_EQ(std::string(i18n.text("ui.home.start")), std::string("Start"));
     // 语言包里没写的键回退到内置中文
     CHECK_EQ(std::string(i18n.text("ui.quiz.submit")), std::string("提交答案"));
@@ -1888,6 +1888,70 @@ void testExamPaper() {
         }
         CHECK(mentioned);
     }
+
+    // 普通规则只抽独立题：材料小题即使题型、标签或总分命中，也不能被普通规则带走。
+    // 材料段只能由 material 规则整段选中，且 material = m2 只收指定材料。
+    const std::string mixedHead =
+        "[meta]\nid = mixed\ntitle = 混合规则\n\n"
+        "[q]\nid = n1\ntype = single\nstem = 独立单选\noption = 甲\noption = 乙\nanswer = A\n"
+        "difficulty = 1\nscore = 1\n\n"
+        "[material]\nid = m1\ntext = 材料一\n\n"
+        "[q]\nid = m1a\ntype = single\nstem = 材料一问\noption = 甲\noption = 乙\nanswer = A\n"
+        "difficulty = 2\nscore = 1\n\n"
+        "[q]\nid = m1b\ntype = single\nstem = 材料二问\noption = 甲\noption = 乙\nanswer = A\n"
+        "difficulty = 2\nscore = 3\n\n"
+        "[break]\n\n"
+        "[material]\nid = m2\ntext = 材料二\n\n"
+        "[q]\nid = m2a\ntype = single\nstem = 另一段材料一问\noption = 甲\noption = 乙\nanswer = A\n"
+        "difficulty = 3\nscore = 2\n\n"
+        "[q]\nid = m2b\ntype = single\nstem = 另一段材料二问\noption = 甲\noption = 乙\nanswer = A\n"
+        "difficulty = 3\nscore = 2\n\n"
+        "[break]\n\n";
+
+    const std::string normalRuleBank =
+        mixedHead + "[exam]\nid = normal-rule\ntitle = 普通规则\nseed = 4\n\n"
+                    "[draw]\ncount = 2\ntype = single\nscore = 4\n";
+    const quiz::io::LoadResult normalRule = quiz::io::loadBank(normalRuleBank, "mixed");
+    CHECK(normalRule.ok());
+    if (normalRule.ok() && !normalRule.bank.exams.empty()) {
+        const quiz::io::ExamPaper items =
+            quiz::io::buildExamPaper(normalRule.bank, normalRule.bank.exams.front(), 4);
+        CHECK_EQ(items.items.size(), size_t(1));   // 只抽到独立题 n1
+        CHECK_EQ(items.totalScore(), 4);           // 普通题的规则分值仍然覆盖题目自带分值
+        CHECK_EQ(items.issues.size(), size_t(1));  // 材料不能被用来补足 2/2
+        if (items.items.size() == 1) {
+            CHECK_EQ(items.items[0].questionIndex, 0);
+            CHECK_EQ(items.items[0].score, 4);
+        }
+    }
+
+    const std::string materialRuleBank =
+        mixedHead + "[exam]\nid = material-rule\ntitle = 材料规则\nseed = 4\n\n"
+                    "[draw]\ncount = 1\ntype = material\nscore = 4\n";
+    const quiz::io::LoadResult materialRule = quiz::io::loadBank(materialRuleBank, "mixed");
+    CHECK(materialRule.ok());
+    if (materialRule.ok() && !materialRule.bank.exams.empty()) {
+        const quiz::io::ExamPaper items =
+            quiz::io::buildExamPaper(materialRule.bank, materialRule.bank.exams.front(), 4);
+        CHECK_EQ(items.items.size(), size_t(2));   // 一段材料的两道小题整段进卷
+        CHECK_EQ(items.totalScore(), 4);
+        CHECK_EQ(items.issues.size(), size_t(0));
+    }
+
+    const std::string namedMaterialBank =
+        mixedHead + "[exam]\nid = named-material\ntitle = 指定材料\nseed = 4\n\n"
+                    "[draw]\ncount = 1\ntype = material\nmaterial = m2\nscore = 4\n";
+    const quiz::io::LoadResult namedMaterial = quiz::io::loadBank(namedMaterialBank, "mixed");
+    CHECK(namedMaterial.ok());
+    if (namedMaterial.ok() && !namedMaterial.bank.exams.empty()) {
+        const quiz::io::ExamPaper items =
+            quiz::io::buildExamPaper(namedMaterial.bank, namedMaterial.bank.exams.front(), 4);
+        CHECK_EQ(items.items.size(), size_t(2));
+        for (const quiz::io::ExamPaperItem& item : items.items) {
+            CHECK_EQ(namedMaterial.bank.questions[static_cast<size_t>(item.questionIndex)].materialId,
+                     std::string("m2"));
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1955,7 +2019,7 @@ int main(int argc, char** argv) {
     if (argc > 0 && argv[0] != nullptr) {
         g_exeDirectory = directoryOf(argv[0]);
     }
-    std::printf("==== Axt 刷题：核心逻辑测试 ====\n");
+    std::printf("==== AxeQuiz / 题斩：核心逻辑测试 ====\n");
     testParseBank();
     testAnswerVariants();
     testInvalidBank();

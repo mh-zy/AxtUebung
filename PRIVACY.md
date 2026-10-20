@@ -1,13 +1,14 @@
 # 隐私与数据说明 / Privacy and Data Notice
 
-最后更新：2026-10-19  
-适用范围：Axt 刷题（AxtUebung）0.2.x 及后续明确引用本说明的版本
+最后更新：2026-10-20
+
+适用范围：题斩 / AxeQuiz（兜底名 AxtUebung）0.2.x 及后续明确引用本说明的版本
 
 ## 中文
 
 ### 1. 结论
 
-Axt 刷题是一个离线、本地优先的刷题工具。
+题斩是一个离线、本地优先的刷题工具。
 
 - 应用本身不连接互联网；
 - 没有账号、登录、云同步、广告、支付或订阅；
@@ -61,7 +62,7 @@ Axt 刷题是一个离线、本地优先的刷题工具。
 
 ## English summary
 
-AxtUebung is a local-first, offline quiz application.
+AxeQuiz is a local-first, offline quiz application.
 
 - The app itself does not access the internet.
 - There are no accounts, cloud sync, ads, payments, analytics, or crash-upload SDKs.

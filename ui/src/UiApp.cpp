@@ -451,6 +451,38 @@ bool headerIconButton(const char* id, const char* svg, const std::string& captio
     return clicked;
 }
 
+/// 首页品牌标题：斧头图形 + 放大的当前语言软件名。
+/// axt-mark.svg 是纯路径图标，当前 SVG 渲染器可直接光栅化；不要直接加载
+/// 带 CSS / <text> 的 CN_title.svg。
+float drawBrandTitle(const std::string& title, unsigned int accentRgb) {
+    const float baseSize = ImGui::GetFontSize();
+    const float titleSize = baseSize * 1.50f;
+    const ImVec2 textSize =
+        ImGui::GetFont()->CalcTextSizeA(titleSize, 4096.0f, 0.0f, title.c_str());
+    const float markSide = std::max(40.0f, titleSize * 1.28f);
+    const float gap = std::max(8.0f, baseSize * 0.55f);
+    const float rowHeight = std::max(markSide, textSize.y);
+    const ImVec2 origin = ImGui::GetCursorScreenPos();
+
+    std::string error;
+    const ImTextureID mark =
+        render::loadIconTexture("icons/axt-mark.svg", 256, accentRgb, &error, 0.94f);
+    float textX = origin.x;
+    if (mark != 0) {
+        const float markY = origin.y + (rowHeight - markSide) * 0.5f;
+        ImGui::GetWindowDrawList()->AddImage(
+            mark, ImVec2(origin.x, markY), ImVec2(origin.x + markSide, markY + markSide));
+        textX += markSide + gap;
+    }
+
+    ImGui::GetWindowDrawList()->AddText(
+        ImGui::GetFont(), titleSize,
+        ImVec2(textX, origin.y + (rowHeight - textSize.y) * 0.5f), toImU32(accentRgb),
+        title.c_str());
+    ImGui::Dummy(ImVec2(textX - origin.x + textSize.x, rowHeight));
+    return rowHeight;
+}
+
 /// 题库卡片：**整张卡都是点击区域**（以前只有标题那一行能点，框里空白处点了没反应）。
 /// 内容全部自己画，所以高度、内边距都可控，也不会在卡片里冒出滚动条。
 /// 题库卡片被点了哪一块
@@ -946,12 +978,6 @@ void UiApp::drawToast(float deltaSeconds) {
 void UiApp::drawHome() {
     const float contentWidth = ImGui::GetContentRegionAvail().x;   // 这一行的可用宽度，用来右对齐
 
-    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::ColorConvertU32ToFloat4(toImU32(colorTextAccentRgb_)));
-    ImGui::Text("%s", context_.i18n().text("ui.app_title"));
-    ImGui::PopStyleColor();
-    ImGui::SameLine();
-    ImGui::TextDisabled("(%s)", platform::name());
-
     //// ---- 语言切换（语言包接口的实际使用）----
     //ImGui::SetNextItemWidth(220.0f);
     //const std::string currentName = context_.i18n().languageName();
@@ -989,7 +1015,11 @@ void UiApp::drawHome() {
     };
     const float topButtonsWidth = captionWidths[0] + captionWidths[1] + captionWidths[2] + headerGap * 2.0f;
     const float headerRowY = ImGui::GetCursorPosY();
-    ImGui::SameLine(std::max(contentWidth - topButtonsWidth - topRightSafeInset(), 0.0f));
+    const float titleHeight = drawBrandTitle(context_.i18n().text("ui.app_title"),
+                                             colorTextAccentRgb_);
+    const float headerHeight = std::max(titleHeight, iconSide + textLine + 4.0f);
+    ImGui::SetCursorPos(
+        ImVec2(std::max(contentWidth - topButtonsWidth - topRightSafeInset(), 0.0f), headerRowY));
     if (headerIconButton("##open_stats", "icons/stats.svg", statsCaption)) {
         screen_ = Screen::Stats;
     }
@@ -1002,7 +1032,7 @@ void UiApp::drawHome() {
     if (headerIconButton("##upload_bank", "icons/upload.svg", uploadCaption)) {
         beginImport();   // 弹系统文件对话框（异步），选中的题库拷进 data/banks
     }
-    ImGui::SetCursorPos(ImVec2(0.0f, headerRowY + iconSide + textLine + 4.0f));
+    ImGui::SetCursorPos(ImVec2(0.0f, headerRowY + headerHeight + 4.0f));
 
     ImGui::Separator();
     ImGui::Text("%s", context_.i18n().text("ui.home.bank_list"));

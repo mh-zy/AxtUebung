@@ -29,8 +29,18 @@ bool hasAnyTag(const std::vector<std::string>& tags, const std::vector<std::stri
 
 /// 这道题满足一条抽题规则里的题型 / 难度 / 标签条件吗
 bool matchesRule(const Question& question, const DrawRule& rule) {
-    if (rule.materialOnly && question.materialId.empty()) {
-        return false;   // type = material：只抽材料题
+    if (rule.materialOnly) {
+        if (question.materialId.empty()) {
+            return false;   // type = material：只抽材料题
+        }
+        if (!rule.materialId.empty() && question.materialId != rule.materialId) {
+            return false;   // material = m1：只收指定材料段里的小题
+        }
+    } else if (!question.materialId.empty()) {
+        // 普通规则只抽独立题。材料段要整段进卷，必须由 material 规则选中；
+        // 否则 type = single 这类普通规则会从材料段里「捞」出一道小题，
+        // 再错误地套用材料段的总分筛选。
+        return false;
     }
     if (!rule.materialOnly && !rule.types.empty() &&
         std::find(rule.types.begin(), rule.types.end(), question.type) == rule.types.end()) {

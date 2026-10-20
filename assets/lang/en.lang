@@ -8,7 +8,7 @@ code = en
 name = English
 
 [text]
-ui.app_title = Quiz
+ui.app_title = AxeQuiz
 ui.home.bank_list = Question banks
 ui.home.progress_summary = answered {answered}/{total}, correct {correct}
 ui.home.bank_line = {file} | {total} questions | {lang}

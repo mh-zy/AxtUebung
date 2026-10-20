@@ -8,7 +8,7 @@ namespace {
 
 /// 内置默认文案（简体中文）。即使一个语言包都没有，程序也能正常显示。
 const std::pair<const char*, const char*> kBuiltinTexts[] = {
-    {"ui.app_title", "刷题"},
+    {"ui.app_title", "AxtUebung"},
     {"ui.home.settings", "设置"},
     {"ui.home.practice_sequential", "顺序刷题"},
     {"ui.home.mode_short_sequential", "顺序"},

@@ -6,6 +6,28 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
+/**
+ * Android 端的 assets 不能直接指向源码目录：里面有大量 *.bak-*、旧图标和
+ * 设计源文件，AAPT 的 ignoreAssetsPatterns 在当前 AGP 版本里没有过滤掉它们。
+ * 这里先 Sync 一个干净目录，再让 AGP 只打包这个目录。
+ */
+val filteredAssetsDir = layout.buildDirectory.dir("generated/filteredAssets")
+val syncFilteredAssets = tasks.register<Sync>("syncFilteredAssets") {
+    from(rootProject.file("assets")) {
+        exclude(
+            "**/*.bak*",
+            "**/chevron-left.svg",
+            "**/move-right.svg",
+            "**/play-track-next.svg",
+            "**/redo.svg",
+            "**/software-download.svg",
+            "**/software-upload.svg",
+            "**/CN_title.svg"
+        )
+    }
+    into(filteredAssetsDir)
+}
+
 android {
     namespace = "com.axt.quiz"
     compileSdk = 37
@@ -17,8 +39,8 @@ android {
         applicationId = "com.axt.quiz"
         minSdk = 24
         targetSdk = 37
-        versionCode = 7
-        versionName = "0.2.2"
+        versionCode = 8
+        versionName = "0.2.3"
 
         // x86_64 给模拟器，arm64-v8a 给真机
         ndk {
@@ -39,21 +61,6 @@ android {
         }
     }
 
-    /** 题库与语言包在项目根目录的 assets/，两端共用同一份 */
-    sourceSets {
-        getByName("main") {
-            assets.srcDir(file("../assets"))
-        }
-    }
-
-    /**
-     * assets/ 是整目录拷的，里面混着几百个 .bak-* 备份文件，不该打进 APK。
-     * 这一条是在 AGP 默认忽略规则之外再补一条：忽略所有 *.bak*。
-     */
-    androidResources {
-        ignoreAssetsPatterns.add("*.bak*")
-    }
-
     /**
      * 侧载用签名：release 也用调试密钥签（不用额外生成 keystore，手机上「下载即装」）。
      * 以后要上应用商店再换成自己的 keystore。
@@ -71,6 +78,14 @@ android {
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.getByName("sideload")
+        }
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(syncFilteredAssets) {
+            it.destinationDirectory
         }
     }
 }

@@ -4,5 +4,5 @@
   界面里的文案全部走语言包（assets/lang/*.lang），见 core/src/i18n/I18n.cpp。
 -->
 <resources>
-    <string name="app_name">Axt Quiz</string>
+    <string name="app_name">AxtUebung</string>
 </resources>

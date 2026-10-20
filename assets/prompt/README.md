@@ -7,7 +7,7 @@
 | `prompt-cn.txt` | 简体中文 |
 | `prompt-en.txt` | English |
 
-用途：把用户提供的原始题库整理成 Axt 刷题可直接导入的 BankFormat v1 纯文本。
+用途：把用户提供的原始题库整理成题斩 / AxeQuiz 可直接导入的 BankFormat v1 纯文本。
 
 维护要求：
 

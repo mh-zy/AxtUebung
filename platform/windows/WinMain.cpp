@@ -34,7 +34,7 @@
 namespace {
 
 constexpr wchar_t kWindowClass[] = L"AxtQuizWindowClass";
-constexpr wchar_t kWindowTitle[] = L"Axt 刷题（C++ / ImGui / Windows + Android 同一份核心）";
+constexpr char kFallbackWindowTitle[] = "AxtUebung";
 constexpr int kDefaultWidth = 960;
 constexpr int kDefaultHeight = 720;
 constexpr double kTargetFrameSeconds = 1.0 / 60.0;
@@ -49,6 +49,7 @@ int g_height = kDefaultHeight;
 bool g_running = true;
 bool g_mouseDown = false;
 double g_lastInputSeconds = 0.0;
+std::string g_windowTitleUtf8;
 
 // ---- 贴屏用的 DIB 段（只创建一次，之后每帧 memcpy + BitBlt）----
 // 之前用 StretchDIBits 直接把像素缓冲交给 GDI：在 960x720 下实测每帧要 33 ms，
@@ -58,6 +59,32 @@ void* g_dibBits = nullptr;
 HDC g_memoryDc = nullptr;
 int g_dibWidth = 0;
 int g_dibHeight = 0;
+
+std::wstring utf8ToWide(const std::string& text) {
+    if (text.empty()) {
+        return std::wstring();
+    }
+    const int length =
+        MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()), nullptr, 0);
+    if (length <= 0) {
+        return std::wstring();
+    }
+    std::wstring wide(static_cast<size_t>(length), L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()), wide.data(),
+                        length);
+    return wide;
+}
+
+/// 窗口标题跟当前语言包里的软件名保持一致；切换语言后下一帧自动更新。
+void syncWindowTitle(HWND window) {
+    const std::string title = g_context.i18n().text("ui.app_title");
+    if (title == g_windowTitleUtf8) {
+        return;
+    }
+    g_windowTitleUtf8 = title;
+    const std::wstring wide = utf8ToWide(title.empty() ? std::string(kFallbackWindowTitle) : title);
+    SetWindowTextW(window, wide.c_str());
+}
 
 void releasePresentSurface() {
     if (g_memoryDc != nullptr) {
@@ -279,7 +306,11 @@ int runWindow(bool fpsEnabled, int fpsIntervalFrames, int forceFrames, int windo
 
     RECT rect{0, 0, clientWidth, clientHeight};
     AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, FALSE);
-    HWND window = CreateWindowExW(0, kWindowClass, kWindowTitle, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT,
+    const std::string initialTitle = g_context.i18n().text("ui.app_title");
+    g_windowTitleUtf8 = initialTitle;
+    const std::wstring windowTitle =
+        utf8ToWide(initialTitle.empty() ? std::string(kFallbackWindowTitle) : initialTitle);
+    HWND window = CreateWindowExW(0, kWindowClass, windowTitle.c_str(), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT,
                                   CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top,
                                   nullptr, nullptr, instance, nullptr);
     if (window == nullptr) {
@@ -343,6 +374,7 @@ int runWindow(bool fpsEnabled, int fpsIntervalFrames, int forceFrames, int windo
         quiz::render::beginFrame(g_width, g_height, delta);
         const double t1 = quiz::platform::monotonicSeconds();
         g_ui.draw(delta);
+        syncWindowTitle(window);
         const double t2 = quiz::platform::monotonicSeconds();
         quiz::render::endFrameAndRender(g_pixels.data(), g_width, g_height, active);
         const double t3 = quiz::platform::monotonicSeconds();
@@ -605,7 +637,7 @@ int runShot(const std::string& outputPath, int width, int height, const std::str
 int runPickTest(const std::string& mode) {
     // 对话框现在是 begin / take 两步：桌面端 begin 里就是模态对话框，take 当场拿到结果
     if (mode == "save") {
-        if (!quiz::platform::beginPickSavePath("Axt 刷题：导出到…",
+        if (!quiz::platform::beginPickSavePath("题斩：导出到…",
                                                "D:\\AxtUebung\\build\\pick-test.quiz", {".quiz"})) {
             std::printf("保存对话框：弹不出来\n");
             return 1;
@@ -617,7 +649,7 @@ int runPickTest(const std::string& mode) {
                     cancelled ? "" : out.c_str());
         return cancelled ? 1 : 0;
     }
-    if (!quiz::platform::beginPickFiles("Axt 刷题：选择题库文件", {"quiz", "txt", "text"}, true)) {
+    if (!quiz::platform::beginPickFiles("题斩：选择题库文件", {"quiz", "txt", "text"}, true)) {
         std::printf("打开对话框：弹不出来\n");
         return 1;
     }
@@ -673,7 +705,7 @@ int runIcon(const std::string& svgPath, const std::string& outPath, int size, un
 
 void printUsage() {
     std::printf(
-        "Axt 刷题（C++ 版）\n"
+        "AxeQuiz / 题斩（C++ 版）\n"
         "用法：\n"
         "  AxtQuiz.exe [--fps N | --no-fps]                打开窗口\n"
         "      默认每 60 帧在控制台打印一行帧率（含各阶段耗时）；\n"

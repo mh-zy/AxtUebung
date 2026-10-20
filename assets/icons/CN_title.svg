@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400">
+  <defs>
+    <style>
+      .bg{fill:#0F1117}
+      .title{font-family:'Noto Sans SC','Source Han Sans CN','Microsoft YaHei',sans-serif;
+             font-size:180px;font-weight:900;fill:#EBEBF0;letter-spacing:18px}
+      .sub{font-family:system-ui,sans-serif;font-size:22px;fill:#8A8F9C;letter-spacing:4px}
+      .tag{font-family:system-ui,sans-serif;font-size:16px;fill:#DC502D;letter-spacing:2px}
+      .shadow{fill:#1A1D27}
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="400" rx="12"/>
+  <!-- 背景刀痕排线 -->
+  <g stroke="#1A1D27" stroke-width="1.5" opacity=".6">
+    <line x1="820" y1="0" x2="1020" y2="400"/>
+    <line x1="870" y1="0" x2="1070" y2="400"/>
+    <line x1="920" y1="0" x2="1120" y2="400"/>
+    <line x1="970" y1="0" x2="1170" y2="400"/>
+  </g>
+  <!-- 斧头图标 -->
+  <g transform="translate(130,155)">
+    <rect x="42" y="10" width="10" height="90" rx="3" fill="#6B4C3A"/>
+    <path d="M42 22 L10 6 Q6 28 42 42 Z" fill="#DC502D"/>
+    <path d="M42 42 L10 56 Q6 38 42 22 Z" fill="#B83E22"/>
+  </g>
+  <!-- 阴影字 -->
+  <text class="title shadow" x="252" y="262">题斩</text>
+  <!-- 主字 -->
+  <text class="title" x="246" y="256">题斩</text>
+  <!-- 橙红分割线 -->
+  <rect x="246" y="290" width="120" height="4" rx="2" fill="#DC502D"/>
+</svg>
