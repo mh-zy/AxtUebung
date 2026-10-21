@@ -438,6 +438,11 @@ float topRightSafeInset() {
     return std::max(12.0f, ImGui::GetFontSize() * 0.70f);
 }
 
+/// 底部手势条安全间距：按钮不要贴住 Android 的系统导航条。
+float bottomActionSafeInset() {
+    return std::max(12.0f, ImGui::GetFontSize() * 0.55f);
+}
+
 /// 顶部图标 + 两字说明。说明直接画在图标下方，不依赖手机没有的悬停提示。
 bool headerIconButton(const char* id, const char* svg, const std::string& caption) {
     const ImVec2 iconAt = ImGui::GetCursorScreenPos();
@@ -451,17 +456,43 @@ bool headerIconButton(const char* id, const char* svg, const std::string& captio
     return clicked;
 }
 
+render::BackgroundImageMode backgroundModeFromSetting(const std::string& mode) {
+    if (mode == "tint") {
+        return render::BackgroundImageMode::Tint;
+    }
+    if (mode == "color") {
+        return render::BackgroundImageMode::Color;
+    }
+    return render::BackgroundImageMode::Auto;
+}
+
+float brandTitleHeight(const std::string& title) {
+    const float titleSize = ImGui::GetFontSize() * 1.50f;
+    ImFont* titleFont = render::titleFont();
+    if (titleFont == nullptr) {
+        titleFont = ImGui::GetFont();
+    }
+    const ImVec2 textSize =
+        titleFont->CalcTextSizeA(titleSize, 4096.0f, 0.0f, title.c_str());
+    const float markSide = std::max(40.0f, titleSize * 1.28f);
+    return std::max(markSide, textSize.y);
+}
+
 /// 首页品牌标题：斧头图形 + 放大的当前语言软件名。
 /// axt-mark.svg 是纯路径图标，当前 SVG 渲染器可直接光栅化；不要直接加载
 /// 带 CSS / <text> 的 CN_title.svg。
 float drawBrandTitle(const std::string& title, unsigned int accentRgb) {
     const float baseSize = ImGui::GetFontSize();
     const float titleSize = baseSize * 1.50f;
+    ImFont* titleFont = render::titleFont();
+    if (titleFont == nullptr) {
+        titleFont = ImGui::GetFont();
+    }
     const ImVec2 textSize =
-        ImGui::GetFont()->CalcTextSizeA(titleSize, 4096.0f, 0.0f, title.c_str());
+        titleFont->CalcTextSizeA(titleSize, 4096.0f, 0.0f, title.c_str());
     const float markSide = std::max(40.0f, titleSize * 1.28f);
     const float gap = std::max(8.0f, baseSize * 0.55f);
-    const float rowHeight = std::max(markSide, textSize.y);
+    const float rowHeight = brandTitleHeight(title);
     const ImVec2 origin = ImGui::GetCursorScreenPos();
 
     std::string error;
@@ -476,11 +507,81 @@ float drawBrandTitle(const std::string& title, unsigned int accentRgb) {
     }
 
     ImGui::GetWindowDrawList()->AddText(
-        ImGui::GetFont(), titleSize,
+        titleFont, titleSize,
         ImVec2(textX, origin.y + (rowHeight - textSize.y) * 0.5f), toImU32(accentRgb),
         title.c_str());
     ImGui::Dummy(ImVec2(textX - origin.x + textSize.x, rowHeight));
     return rowHeight;
+}
+
+/// 首页背景：先铺满整个首页内容区，再用主题底色遮住未启用的顶部 / 底部。
+void drawHomeBackground(const AppContext& context, const ImVec2& origin, float contentHeight,
+                        float topEndY, bool coverTop, bool coverBottom, float bottomStartY,
+                        unsigned int accentRgb) {
+    const Settings& settings = context.settings();
+    if (settings.homeBackgroundSource.empty() || settings.homeBackgroundSource == "none") {
+        return;
+    }
+    std::string bytes;
+    std::string error;
+    if (!context.readHomeBackground(bytes, error)) {
+        return;
+    }
+    unsigned int themeBgRgb = 0xD8DDE3u;
+    Settings::parseHexColor(settings.uiColorBackground, themeBgRgb);
+    const render::BackgroundTexture texture = render::loadBackgroundTexture(
+        settings.homeBackgroundSource, bytes, backgroundModeFromSetting(settings.homeBackgroundMode),
+        accentRgb, themeBgRgb, &error);
+    if (texture.id == static_cast<ImTextureID>(0) || texture.width <= 0 || texture.height <= 0) {
+        return;
+    }
+
+    const ImVec2 far(origin.x + ImGui::GetContentRegionAvail().x, origin.y + contentHeight);
+    ImDrawList* draw = ImGui::GetWindowDrawList();
+    const int alpha = std::clamp(settings.homeBackgroundOpacity, 0, 100) * 255 / 100;
+    const float boxWidth = far.x - origin.x;
+    const float boxHeight = std::max(far.y - origin.y, 1.0f);
+    const float imageAspect =
+        static_cast<float>(texture.width) / static_cast<float>(texture.height);
+    if (settings.homeBackgroundFit == "contain") {
+        float drawWidth = boxWidth;
+        float drawHeight = boxWidth / imageAspect;
+        if (drawHeight > boxHeight) {
+            drawHeight = boxHeight;
+            drawWidth = boxHeight * imageAspect;
+        }
+        const ImVec2 imageMin(origin.x + (boxWidth - drawWidth) * 0.5f,
+                              origin.y + (boxHeight - drawHeight) * 0.5f);
+        draw->AddImage(texture.id, imageMin,
+                       ImVec2(imageMin.x + drawWidth, imageMin.y + drawHeight), ImVec2(0, 0),
+                       ImVec2(1, 1), IM_COL32(255, 255, 255, alpha));
+    } else {
+        const float boxAspect = boxWidth / boxHeight;
+        float u0 = 0.0f, v0 = 0.0f, u1 = 1.0f, v1 = 1.0f;
+        if (imageAspect > boxAspect) {
+            const float crop = 0.5f * (1.0f - boxAspect / imageAspect);
+            u0 = crop;
+            u1 = 1.0f - crop;
+        } else {
+            const float crop = 0.5f * (1.0f - imageAspect / boxAspect);
+            v0 = crop;
+            v1 = 1.0f - crop;
+        }
+        draw->AddImage(texture.id, origin, far, ImVec2(u0, v0), ImVec2(u1, v1),
+                       IM_COL32(255, 255, 255, alpha));
+    }
+
+    // 轻微主题色遮罩，彩图也能保持卡片 / 文字对比度。
+    draw->AddRectFilled(origin, far,
+                        IM_COL32((themeBgRgb >> 16) & 0xFF, (themeBgRgb >> 8) & 0xFF,
+                                 themeBgRgb & 0xFF, 48));
+    const ImU32 background = ImGui::GetColorU32(ImGuiCol_WindowBg);
+    if (!coverTop) {
+        draw->AddRectFilled(origin, ImVec2(far.x, std::min(topEndY, far.y)), background);
+    }
+    if (!coverBottom) {
+        draw->AddRectFilled(ImVec2(origin.x, std::max(bottomStartY, origin.y)), far, background);
+    }
 }
 
 /// 题库卡片：**整张卡都是点击区域**（以前只有标题那一行能点，框里空白处点了没反应）。
@@ -570,7 +671,7 @@ BankCardAction bankCard(const char* id, const std::string& title, const std::str
     // ① 右侧三个图标**必须先建**：ImGui 里先建的那个按钮才会先抢到 ActiveId，
     //    后建的 ItemHoverable 直接返回 false —— 反过来就会被整卡按钮吃掉。
     //    从右往左排：删除题库在最右（最危险的那个放边上），然后清除数据、错题本。
-    const float iconsTop = origin.y + (height - iconSide) * 0.2f;
+    const float iconsTop = origin.y + (height - iconSide) * 0.1f;
     const ImVec2 deletePos(origin.x + width - pad - iconSide, iconsTop);
     const ImVec2 clearPos(deletePos.x - iconGap - iconSide, iconsTop);
     const ImVec2 wrongPos(clearPos.x - iconGap - iconSide, iconsTop);
@@ -977,6 +1078,8 @@ void UiApp::drawToast(float deltaSeconds) {
 // ---------------------------------------------------------------------------
 void UiApp::drawHome() {
     const float contentWidth = ImGui::GetContentRegionAvail().x;   // 这一行的可用宽度，用来右对齐
+    const ImVec2 homeOrigin = ImGui::GetCursorScreenPos();
+    const float homeHeight = ImGui::GetContentRegionAvail().y;
 
     //// ---- 语言切换（语言包接口的实际使用）----
     //ImGui::SetNextItemWidth(220.0f);
@@ -1015,9 +1118,24 @@ void UiApp::drawHome() {
     };
     const float topButtonsWidth = captionWidths[0] + captionWidths[1] + captionWidths[2] + headerGap * 2.0f;
     const float headerRowY = ImGui::GetCursorPosY();
-    const float titleHeight = drawBrandTitle(context_.i18n().text("ui.app_title"),
-                                             colorTextAccentRgb_);
-    const float headerHeight = std::max(titleHeight, iconSide + textLine + 4.0f);
+    const std::string appTitle = context_.i18n().text("ui.app_title");
+    const float titleHeight = brandTitleHeight(appTitle);
+    const float titleTopInset = std::max(6.0f, ImGui::GetFontSize() * 0.30f);
+    const float headerHeight =
+        std::max(titleHeight + titleTopInset, iconSide + textLine + 4.0f);
+    const float bottomReserve =
+        controlHeight() + iconButtonSide() + ImGui::GetTextLineHeightWithSpacing() * 4.0f +
+        (contentWidth < 700.0f ? controlHeight() : 0.0f);
+    const float topEndY =
+        homeOrigin.y + headerRowY + headerHeight + 4.0f + ImGui::GetStyle().ItemSpacing.y;
+    const float bottomStartY = homeOrigin.y + std::max(homeHeight - bottomReserve, 0.0f);
+    const Settings& settings = context_.settings();
+    const bool hasBackground =
+        !settings.homeBackgroundSource.empty() && settings.homeBackgroundSource != "none";
+    drawHomeBackground(context_, homeOrigin, homeHeight, topEndY, settings.homeBackgroundTop,
+                       settings.homeBackgroundBottom, bottomStartY, colorTextAccentRgb_);
+    ImGui::SetCursorPosY(headerRowY + titleTopInset);
+    drawBrandTitle(appTitle, colorTextAccentRgb_);
     ImGui::SetCursorPos(
         ImVec2(std::max(contentWidth - topButtonsWidth - topRightSafeInset(), 0.0f), headerRowY));
     if (headerIconButton("##open_stats", "icons/stats.svg", statsCaption)) {
@@ -1049,12 +1167,12 @@ void UiApp::drawHome() {
     // 按当前字号算出来，换字号 / 换界面比例也不会把底部切掉；列表本身可以滚，多留一点没关系。
     // 底部现在是「主按钮 + 一行标题 + 一行图标」（以前是两行图标），预留高度按实际用量算；
     // 窄窗口会把「每轮题数」挤到下一行，那种情况再多留一行输入框的高度
-    const float bottomReserve =
-        controlHeight() + iconButtonSide() + ImGui::GetTextLineHeightWithSpacing() * 4.0f +
-        (contentWidth < 700.0f ? controlHeight() : 0.0f);
     const float listHeight = std::max(ImGui::GetContentRegionAvail().y - bottomReserve, 140.0f);
     // 点了「删除题库」的第二下：出了循环再删（删完题库列表整个重建，循环里的引用会失效）
     int confirmedDelete = -1;
+    if (hasBackground) {
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+    }
     if (ImGui::BeginChild("bank_list", ImVec2(0.0f, listHeight), ImGuiChildFlags_None)) {
         // 首页题库卡很多时列表会超出一屏。从卡片、按钮上纵向拖动都会接管为滚动；
         // 横向动作仍留给卡片上的图标控件，短按不动则照常打开题库。
@@ -1154,6 +1272,9 @@ void UiApp::drawHome() {
         }
     }
     ImGui::EndChild();
+    if (hasBackground) {
+        ImGui::PopStyleColor();
+    }
 
     // 删除题库会把列表整个重建，所以放到循环外面做；这一帧就先画到这儿。
     if (confirmedDelete >= 0 && confirmedDelete < static_cast<int>(context_.banks().size())) {
@@ -1326,8 +1447,8 @@ void UiApp::drawHome() {
         if (ImGui::ArrowButton("##export_more", ImGuiDir_Up)) {
             ImGui::OpenPopup("##export_more_panel");
         }
-        // 面板整体放到按钮上方：pivot 用 (0,1)（窗口左下角对准锚点），高度多少都不用先知道
-        ImGui::SetNextWindowPos(ImGui::GetItemRectMin(), ImGuiCond_Always, ImVec2(0.0f, 1.0f));
+        // 面板整体放到按钮上方：pivot 用 (0.25,1)（窗口接近左下角对准锚点，避免被挤压），高度多少都不用先知道
+        ImGui::SetNextWindowPos(ImGui::GetItemRectMin(), ImGuiCond_Always, ImVec2(0.25f, 1.0f));
         if (ImGui::BeginPopup("##export_more_panel")) {
             struct ExportItem {
                 const char* id;
@@ -1406,6 +1527,18 @@ void UiApp::beginImport() {
     pendingDialog_ = PendingDialog::Import;
 }
 
+void UiApp::beginBackgroundImport() {
+    if (pendingDialog_ != PendingDialog::None) {
+        return;
+    }
+    if (!platform::beginPickFiles(context_.i18n().text("ui.settings.background_import"),
+                                  {"png", "jpg", "jpeg", "bmp"}, false)) {
+        context_.setMessage(context_.i18n().text("ui.settings.background_failed"));
+        return;
+    }
+    pendingDialog_ = PendingDialog::BackgroundImport;
+}
+
 void UiApp::startBank(int index) {
     if (index < 0 || index >= static_cast<int>(context_.banks().size())) {
         return;
@@ -1469,6 +1602,47 @@ void UiApp::pollPendingDialog() {
             context_.setMessage(context_.i18n().format(
                 "ui.home.import_ok",
                 {{"count", std::to_string(names.size())}, {"names", joined}}));
+        } else {
+            context_.setMessage(error);
+        }
+        return;
+    }
+
+    if (pendingDialog_ == PendingDialog::BackgroundImport) {
+        std::vector<std::string> paths;
+        bool cancelled = false;
+        if (!platform::takePickedFiles(paths, cancelled)) {
+            return;
+        }
+        pendingDialog_ = PendingDialog::None;
+        if (cancelled) {
+            return;
+        }
+        if (paths.size() != 1) {
+            context_.setMessage(context_.i18n().text("ui.settings.background_failed"));
+            return;
+        }
+        std::string bytes;
+        if (!platform::readTextFile(paths[0], bytes) || bytes.empty()) {
+            context_.setMessage(context_.i18n().text("ui.settings.background_failed"));
+            return;
+        }
+        unsigned int bgRgb = 0xD8DDE3u;
+        Settings::parseHexColor(context_.settings().uiColorBackground, bgRgb);
+        std::string decodeError;
+        const render::BackgroundTexture texture = render::loadBackgroundTexture(
+            "import:" + paths[0], bytes,
+            backgroundModeFromSetting(context_.settings().homeBackgroundMode),
+            colorTextAccentRgb_, bgRgb, &decodeError);
+        if (texture.id == static_cast<ImTextureID>(0)) {
+            context_.setMessage(decodeError.empty()
+                                    ? context_.i18n().text("ui.settings.background_failed")
+                                    : decodeError);
+            return;
+        }
+        std::string error;
+        if (context_.importHomeBackground(paths[0], error)) {
+            context_.setMessage(context_.i18n().text("ui.settings.background_imported"));
         } else {
             context_.setMessage(error);
         }
@@ -1686,6 +1860,19 @@ void UiApp::drawQuiz() {
         return;
     }
 
+    // 正文独立滚动，底部「提交 + 导航」固定。这样题目再长，上一题 / 下一题也不会
+    // 跟着内容上下跑；预留高度按当前字号计算，换字号后仍能贴住底边。
+    const float footerHeight =
+        controlHeight() + ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeight() +
+        bottomActionSafeInset();
+    const float quizContentHeight =
+        std::max(ImGui::GetContentRegionAvail().y - footerHeight - ImGui::GetStyle().ItemSpacing.y,
+                 120.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+    if (ImGui::BeginChild("quiz_scroll", ImVec2(0.0f, quizContentHeight), ImGuiChildFlags_None)) {
+        ScrollDrag scrollDrag;
+
     // ---- 题型标签 + 收藏（收藏用书签图标，选中时变成强调色实心）----
     const ImU32 accentColor = toImU32(colorAccentRgb_);
     chip(typeLabelOf(context_.i18n(), question->type), accentColor, contrastText(accentColor));
@@ -1890,62 +2077,6 @@ void UiApp::drawQuiz() {
         }
     }
 
-    // ---- 底部操作条：主按钮占满一行，导航三个等宽 ----
-    ImGui::Spacing();
-    if (examRunning) {
-        // 考试中：没有「提交答案」（答案先留在草稿里，随时能改），只有「交卷」
-        if (primaryButton(context_.i18n().text("ui.exam.submit"), ImVec2(-1.0f, controlHeight()),
-                          colorAccentRgb_)) {
-            examSubmitAsk_ = true;
-        }
-    } else {
-        const bool canSubmit = !session.submitted() && session.hasAnswerInput();
-        ImGui::BeginDisabled(!canSubmit);
-        if (primaryButton(context_.i18n().text("ui.quiz.submit"), ImVec2(-1.0f, controlHeight()),
-                          colorAccentRgb_, canSubmit)) {
-            submitCurrent();
-        }
-        ImGui::EndDisabled();
-    }
-
-    const float navWidth =
-        (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x * 2.0f) / 3.0f;
-    if (ImGui::Button(context_.i18n().text("ui.quiz.prev"), ImVec2(navWidth, 0.0f))) {
-        cancelAutoNext();
-        session.prev();
-    }
-    ImGui::SameLine();
-    ImGui::BeginDisabled(!session.hasNextInPlan());
-    if (ImGui::Button(context_.i18n().text("ui.quiz.next"), ImVec2(navWidth, 0.0f))) {
-        cancelAutoNext();
-        session.next();
-    }
-    ImGui::EndDisabled();
-    ImGui::SameLine();
-    // 第三个按钮：考试中给「总览」（交卷在上面那个大按钮上）、交过卷给「成绩单」，
-    // 普通练习还是「本次结果」
-    if (examRunning) {
-        if (ImGui::Button(context_.i18n().text("ui.quiz.overview"), ImVec2(navWidth, 0.0f))) {
-            openOverviewPopup();
-        }
-    } else if (session.isReciteMode()) {
-        if (ImGui::Button(context_.i18n().text("ui.quiz.back_home"), ImVec2(navWidth, 0.0f))) {
-            cancelAutoNext();
-            context_.saveProgress();
-            screen_ = Screen::Home;
-        }
-    } else if (context_.hasExamSummary()) {
-        if (ImGui::Button(context_.i18n().text("ui.exam.review"), ImVec2(navWidth, 0.0f))) {
-            cancelAutoNext();
-            screen_ = Screen::ExamResult;
-        }
-    } else if (ImGui::Button(context_.i18n().text("ui.result.title"), ImVec2(navWidth, 0.0f))) {
-        cancelAutoNext();
-        context_.saveProgress();
-        resultParent_ = Screen::Quiz;
-        screen_ = Screen::Result;
-    }
-
     // ---- 判定与解析：装在一张卡片里（别到处是边框）----
     const std::string analysis = question->analysisFor(context_.i18n().language());
     if (session.submitted()) {
@@ -2005,6 +2136,67 @@ void UiApp::drawQuiz() {
         ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(toImU32(colorAccentRgb_)), "%s",
                            context_.i18n().text("ui.quiz.auto_next_hint"));
         ImGui::ProgressBar(1.0f - autoNextTimer_ / total, ImVec2(240.0f, 6.0f), "");
+    }
+
+    ImGui::Dummy(ImVec2(0.0f, 8.0f));
+    }
+    ImGui::EndChild();
+    ImGui::PopStyleColor();
+    ImGui::PopStyleVar();
+
+    // ---- 固定页脚：主操作 + 上一题 / 下一题 / 结果 ----
+    ImGui::Spacing();
+    if (examRunning) {
+        // 考试中：没有「提交答案」（答案先留在草稿里，随时能改），只有「交卷」
+        if (primaryButton(context_.i18n().text("ui.exam.submit"), ImVec2(-1.0f, controlHeight()),
+                          colorAccentRgb_)) {
+            examSubmitAsk_ = true;
+        }
+    } else {
+        const bool canSubmit = !session.submitted() && session.hasAnswerInput();
+        ImGui::BeginDisabled(!canSubmit);
+        if (primaryButton(context_.i18n().text("ui.quiz.submit"), ImVec2(-1.0f, controlHeight()),
+                          colorAccentRgb_, canSubmit)) {
+            submitCurrent();
+        }
+        ImGui::EndDisabled();
+    }
+
+    const float navWidth =
+        (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x * 2.0f) / 3.0f;
+    if (ImGui::Button(context_.i18n().text("ui.quiz.prev"), ImVec2(navWidth, 0.0f))) {
+        cancelAutoNext();
+        session.prev();
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!session.hasNextInPlan());
+    if (ImGui::Button(context_.i18n().text("ui.quiz.next"), ImVec2(navWidth, 0.0f))) {
+        cancelAutoNext();
+        session.next();
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    // 第三个按钮：考试中给「总览」、交过卷给「成绩单」，普通练习是「本次结果」
+    if (examRunning) {
+        if (ImGui::Button(context_.i18n().text("ui.quiz.overview"), ImVec2(navWidth, 0.0f))) {
+            openOverviewPopup();
+        }
+    } else if (session.isReciteMode()) {
+        if (ImGui::Button(context_.i18n().text("ui.quiz.back_home"), ImVec2(navWidth, 0.0f))) {
+            cancelAutoNext();
+            context_.saveProgress();
+            screen_ = Screen::Home;
+        }
+    } else if (context_.hasExamSummary()) {
+        if (ImGui::Button(context_.i18n().text("ui.exam.review"), ImVec2(navWidth, 0.0f))) {
+            cancelAutoNext();
+            screen_ = Screen::ExamResult;
+        }
+    } else if (ImGui::Button(context_.i18n().text("ui.result.title"), ImVec2(navWidth, 0.0f))) {
+        cancelAutoNext();
+        context_.saveProgress();
+        resultParent_ = Screen::Quiz;
+        screen_ = Screen::Result;
     }
 
     drawOverviewPanel();
@@ -2175,7 +2367,8 @@ void UiApp::drawPaper(const QuestionBank& bank, const std::vector<int>& group) {
     const bool wholePage = context_.settings().paperSubmitWholePage;
     const bool examRunning = session.isExamMode();
     // 考试中底部多一行「已作答 x / y 题」+ 交卷按钮，留白比整页模式再多一行
-    const float navHeight = examRunning ? 190.0f : (wholePage ? 150.0f : 58.0f);
+    const float navHeight =
+        (examRunning ? 190.0f : (wholePage ? 150.0f : 58.0f)) + bottomActionSafeInset();
     const float paperHeight = std::max(ImGui::GetContentRegionAvail().y - navHeight, 160.0f);
     if (ImGui::BeginChild("paper_scroll", ImVec2(0.0f, paperHeight), ImGuiChildFlags_Borders)) {
         // 材料正文与多道小题共用这一页；从题干 / 材料空白处上划滚动整页。
@@ -3023,6 +3216,9 @@ void UiApp::drawSettings() {
     }
     if (result.leaveToHome) {
         screen_ = Screen::Home;
+    }
+    if (result.requestBackgroundImport) {
+        beginBackgroundImport();
     }
 }
 

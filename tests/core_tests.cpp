@@ -623,6 +623,31 @@ void testSettings() {
     CHECK_EQ(quiz::Settings::parse("[ui]\nround_size = 999\n").roundSize, 200);
     CHECK_EQ(quiz::Settings::parse("[ui]\nweighted_round_size = 33\n").roundSize, 33);
 
+    // 首页背景设置：来源、模式、透明度、铺放与三段覆盖
+    CHECK_EQ(defaults.homeBackgroundSource, std::string("none"));
+    CHECK_EQ(defaults.homeBackgroundMode, std::string("auto"));
+    CHECK_EQ(defaults.homeBackgroundOpacity, 22);
+    CHECK_EQ(defaults.homeBackgroundFit, std::string("cover"));
+    CHECK(defaults.homeBackgroundTop);
+    CHECK(defaults.homeBackgroundBottom);
+    quiz::Settings background;
+    background.homeBackgroundSource = "asset:Doppelaxt.png";
+    background.homeBackgroundMode = "tint";
+    background.homeBackgroundOpacity = 64;
+    background.homeBackgroundFit = "contain";
+    background.homeBackgroundTop = false;
+    background.homeBackgroundBottom = false;
+    const quiz::Settings backgroundBack = quiz::Settings::parse(background.serialize());
+    CHECK_EQ(backgroundBack.homeBackgroundSource, std::string("asset:Doppelaxt.png"));
+    CHECK_EQ(backgroundBack.homeBackgroundMode, std::string("tint"));
+    CHECK_EQ(backgroundBack.homeBackgroundOpacity, 64);
+    CHECK_EQ(backgroundBack.homeBackgroundFit, std::string("contain"));
+    CHECK(!backgroundBack.homeBackgroundTop);
+    CHECK(!backgroundBack.homeBackgroundBottom);
+    CHECK_EQ(quiz::Settings::parse("[ui]\nhome_background_opacity = 999\n")
+                 .homeBackgroundOpacity,
+             quiz::Settings::kMaxBackgroundOpacity);
+
     // 界面比例：默认跟随窗口；合法比例能读回来；乱写的当作跟随窗口
     int aspectWidth = 0;
     int aspectHeight = 0;
@@ -746,6 +771,7 @@ void testThemePresetFile() {
         CHECK_EQ(quiz::applyThemePreset(preset, settings), static_cast<int>(keys.size()));
     }
 }
+
 }  // namespace
 
 // 错题本：被动移出（对/错次数比例）+ 主动移出（重置成 0 错 1 对）+ 本轮统计
@@ -1951,6 +1977,29 @@ void testExamPaper() {
             CHECK_EQ(namedMaterial.bank.questions[static_cast<size_t>(item.questionIndex)].materialId,
                      std::string("m2"));
         }
+    }
+
+    // 材料总分不匹配，但另一段已经补足 count 时，不应额外报「总分对不上」。
+    const std::string warningBank =
+        "[meta]\nid = warning\ntitle = 警告过滤\n\n"
+        "[material]\nid = m1\ntext = 总分 4 的材料\n\n"
+        "[q]\nid = w1a\ntype = single\nstem = 问题一\noption = 甲\noption = 乙\nanswer = A\nscore = 1\n\n"
+        "[q]\nid = w1b\ntype = single\nstem = 问题二\noption = 甲\noption = 乙\nanswer = A\nscore = 3\n\n"
+        "[break]\n\n"
+        "[material]\nid = m2\ntext = 总分 5 的材料\n\n"
+        "[q]\nid = w2a\ntype = single\nstem = 问题三\noption = 甲\noption = 乙\nanswer = A\nscore = 2\n\n"
+        "[q]\nid = w2b\ntype = single\nstem = 问题四\noption = 甲\noption = 乙\nanswer = A\nscore = 3\n\n"
+        "[break]\n\n"
+        "[exam]\nid = warning-paper\ntitle = 警告过滤卷\nseed = 1\n\n"
+        "[draw]\ncount = 1\ntype = material\nscore = 5\n";
+    const quiz::io::LoadResult warning = quiz::io::loadBank(warningBank, "warning");
+    CHECK(warning.ok());
+    if (warning.ok() && !warning.bank.exams.empty()) {
+        const quiz::io::ExamPaper items =
+            quiz::io::buildExamPaper(warning.bank, warning.bank.exams.front(), 1);
+        CHECK_EQ(items.items.size(), size_t(2));
+        CHECK_EQ(items.totalScore(), 5);
+        CHECK_EQ(items.issues.size(), size_t(0));
     }
 }
 

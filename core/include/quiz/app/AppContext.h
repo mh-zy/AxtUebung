@@ -147,6 +147,14 @@ public:
     bool importBankFiles(const std::vector<std::string>& paths, std::vector<std::string>& outNames,
                          std::string& outError);
 
+    // ---- 首页背景 ----
+    /// 导入 PNG/JPEG/BMP 到 data/background/，成功后更新设置。
+    bool importHomeBackground(const std::string& sourcePath, std::string& outError);
+    /// 读取当前背景图片的二进制内容（内置 assets/background 或 data/background）。
+    bool readHomeBackground(std::string& outBytes, std::string& outError) const;
+    /// 清除背景设置并删除用户导入的背景文件。
+    bool clearHomeBackground(std::string& outError);
+
     // ---- 考试模式 ----
     /// 当前题库里定义的卷（首页「考试」用；题库没写 [exam] 就是空的）
     const std::vector<ExamSpec>& activeBankExams() const;
@@ -234,6 +242,8 @@ private:
     std::string message_;
     Settings settings_;
     Stats stats_;
+    mutable std::string homeBackgroundCache_;
+    mutable std::string homeBackgroundCacheKey_;
     // 做题时长：只算刷题页面开着的时间（以前是「进题库之后的全部时间」，把首页/设置也算进去了）
     bool quizPageActive_ = false;         // 现在是不是在刷题页
     double quizPageTickSeconds_ = 0.0;    // 上次结算的时刻

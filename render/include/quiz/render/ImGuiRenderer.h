@@ -64,6 +64,8 @@ void rebuildFont(float fontScale);
 /// 当前字体是否来自系统字体文件（false 表示退回了 ImGui 内置英文字体）
 bool usingSystemFont();
 std::string fontPath();
+/// 首页品牌标题字体；字体包缺失时返回 nullptr，调用方应退回当前正文字体
+ImFont* titleFont();
 
 // ---------------------------------------------------------------------------
 // 图标纹理（SVG → 纹理）
@@ -83,6 +85,26 @@ ImTextureID loadIconTexture(const std::string& assetName, int sizePx, unsigned i
 /// 直接从 SVG 文本生成（不走缓存）；inkFraction 含义同上
 ImTextureID createIconTextureFromSvg(const std::string& svgText, int sizePx, unsigned int colorRgb,
                                      std::string* outError = nullptr, float inkFraction = 0.0f);
+
+enum class BackgroundImageMode {
+    Auto,   // 自动判断灰度并染色
+    Tint,   // 强制使用主题色染色
+    Color,  // 保留原彩
+};
+
+struct BackgroundTexture {
+    ImTextureID id = static_cast<ImTextureID>(0);
+    int width = 0;
+    int height = 0;
+    bool tinted = false;
+};
+
+/// 解码 PNG/JPEG/BMP 并注册为背景纹理。
+/// 同一个 cacheKey + 模式 + 主题色只解码一次。
+BackgroundTexture loadBackgroundTexture(const std::string& cacheKey, const std::string& encoded,
+                                        BackgroundImageMode mode, unsigned int accentRgb,
+                                        unsigned int backgroundColorRgb,
+                                        std::string* outError = nullptr);
 
 /// 清掉图标缓存的索引（纹理本身留在后端里，进程退出时一起释放）
 void clearIconCache();

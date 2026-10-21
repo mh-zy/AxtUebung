@@ -22,7 +22,8 @@ val syncFilteredAssets = tasks.register<Sync>("syncFilteredAssets") {
             "**/redo.svg",
             "**/software-download.svg",
             "**/software-upload.svg",
-            "**/CN_title.svg"
+            "**/CN_title.svg",
+            "**/LxgwMarkerGothic-v1.004/**"
         )
     }
     into(filteredAssetsDir)
@@ -39,8 +40,8 @@ android {
         applicationId = "com.axt.quiz"
         minSdk = 24
         targetSdk = 37
-        versionCode = 8
-        versionName = "0.2.3"
+        versionCode = 9
+        versionName = "0.3.0"
 
         // x86_64 给模拟器，arm64-v8a 给真机
         ndk {

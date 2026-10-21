@@ -696,23 +696,22 @@ bool hasHardwareKeyboard() {
 
 std::vector<std::string> fontCandidates() {
     std::vector<std::string> out;
-    // 1) 打包进 APK 的字体优先（assets/fonts/*.ttf|*.ttc）。
-    //    ImGui 要一个真实文件路径，所以先解到 data/fonts/ 下；解过一次就不再解。
-    for (const std::string& suffix : {std::string(".ttf"), std::string(".ttc")}) {
-        for (const std::string& name : listAssetFiles("fonts", suffix)) {
-            const std::string target = joinPath(joinPath(dataDirectory(), "fonts"), name);
-            if (!fileExists(target)) {
-                std::string bytes;
-                if (!readAssetText("fonts/" + name, bytes) || bytes.empty() ||
-                    !writeTextFile(target, bytes)) {
-                    writeLog(1, "内置字体解压失败（不影响使用，只是中文会显示成方块）");
-                    continue;
-                }
-                const std::string message = "已解出内置字体：" + target;
-                writeLog(0, message.c_str());
-            }
-            out.push_back(target);
+    // 1) 正文字体固定用 Noto Sans SC。标题字体是独立槽位，不能混进正文候选，
+    //    否则按文件名排序时 Marker Gothic 可能抢到正文默认字体。
+    const std::string bodyName = "NotoSansSC-Regular.ttf";
+    const std::string bodyTarget = joinPath(joinPath(dataDirectory(), "fonts"), bodyName);
+    if (!fileExists(bodyTarget)) {
+        std::string bytes;
+        if (readAssetText("fonts/" + bodyName, bytes) && !bytes.empty() &&
+            writeTextFile(bodyTarget, bytes)) {
+            const std::string message = "已解出内置正文字体：" + bodyTarget;
+            writeLog(0, message.c_str());
+        } else {
+            writeLog(1, "内置正文字体解压失败（不影响使用，只是中文会显示成方块）");
         }
+    }
+    if (fileExists(bodyTarget)) {
+        out.push_back(bodyTarget);
     }
     // 2) 再依次试系统字体：现代 Android 只带 CFF 轮廓的 Noto CJK，stb 读不了，
     //    所以这一组通常都会失败（界面会退回内置英文字体）
@@ -728,6 +727,23 @@ std::vector<std::string> fontCandidates() {
         out.push_back(path);
     }
     return out;
+}
+
+std::string titleFontPath() {
+    const std::string fileName = "LXGWMarkerGothic-Regular.ttf";
+    const std::string fontDirectory = joinPath(dataDirectory(), "fonts");
+    const std::string target = joinPath(fontDirectory, fileName);
+    if (fileExists(target)) {
+        return target;
+    }
+    makeDirectories(fontDirectory);
+    std::string bytes;
+    if (!readAssetText("fonts/" + fileName, bytes) || bytes.empty() ||
+        !writeTextFile(target, bytes)) {
+        return std::string();
+    }
+    writeLog(0, ("已解出标题字体：" + target).c_str());
+    return target;
 }
 
 }  // namespace quiz::platform

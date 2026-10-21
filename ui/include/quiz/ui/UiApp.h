@@ -71,6 +71,8 @@ private:
     void beginExport(AppContext::ExportKind kind);
     /// 从系统文件对话框导入题库（首页「载入」按钮，同样只负责发起）
     void beginImport();
+    /// 从系统文件对话框导入首页背景图片
+    void beginBackgroundImport();
     /// 系统对话框（导入 / 导出）有结果了吗？有结果就接着做完。
     /// 为什么不在发起处等结果：Android 的选择器是另一个 Activity，系统停窗口时
     /// native_app_glue 的 onPause 会阻塞主线程直到宿主线程处理完命令（实测 5 秒即 ANR）。
@@ -165,7 +167,7 @@ private:
     int pendingExam_ = -1;                      // 准备页上等确认的那套卷（题库里的下标）
 
     // 正在等结果的系统对话框（同一时刻只允许一个）
-    enum class PendingDialog { None, Import, ExportBank, ExportTags };
+    enum class PendingDialog { None, Import, BackgroundImport, ExportBank, ExportTags };
     PendingDialog pendingDialog_ = PendingDialog::None;
     AppContext::ExportKind pendingExportKind_ = AppContext::ExportKind::WholeBank;
     std::vector<std::string> pendingTags_;   // 按标签导出时选中的标签

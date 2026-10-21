@@ -312,6 +312,127 @@ void SettingsScreen::drawInterface(Result& result) {
         ImGui::EndCombo();
     }
     wrappedHint(context_.i18n().text("ui.settings.aspect_hint"));
+
+    // ---- 首页背景 ----
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::TextDisabled("%s", context_.i18n().text("ui.settings.home_background"));
+
+    Settings& settings = context_.settings();
+    const std::string source = settings.homeBackgroundSource;
+    const bool enabled = !source.empty() && source != "none";
+    std::string sourceLabel = context_.i18n().text("ui.settings.background_none");
+    if (source == "asset:Doppelaxt.png") {
+        sourceLabel = context_.i18n().text("ui.settings.background_doppelaxt");
+    } else if (source == "asset:Hellebarde.png") {
+        sourceLabel = context_.i18n().text("ui.settings.background_hellebarde");
+    } else if (source.rfind("user:", 0) == 0) {
+        sourceLabel = context_.i18n().text("ui.settings.background_custom");
+    }
+
+    ImGui::SetNextItemWidth(220.0f);
+    if (ImGui::BeginCombo("##background_source", sourceLabel.c_str())) {
+        if (ImGui::Selectable(context_.i18n().text("ui.settings.background_none"), !enabled)) {
+            std::string error;
+            context_.clearHomeBackground(error);
+        }
+        if (ImGui::Selectable(context_.i18n().text("ui.settings.background_doppelaxt"),
+                              source == "asset:Doppelaxt.png")) {
+            settings.homeBackgroundSource = "asset:Doppelaxt.png";
+            context_.saveSettings();
+        }
+        if (ImGui::Selectable(context_.i18n().text("ui.settings.background_hellebarde"),
+                              source == "asset:Hellebarde.png")) {
+            settings.homeBackgroundSource = "asset:Hellebarde.png";
+            context_.saveSettings();
+        }
+        if (ImGui::Selectable(context_.i18n().text("ui.settings.background_custom"),
+                              source.rfind("user:", 0) == 0)) {
+            result.requestBackgroundImport = true;
+        }
+        ImGui::EndCombo();
+    }
+
+    if (ImGui::Button(context_.i18n().text("ui.settings.background_import"))) {
+        result.requestBackgroundImport = true;
+    }
+    if (enabled) {
+        ImGui::SameLine();
+        if (ImGui::Button(context_.i18n().text("ui.settings.background_remove"))) {
+            std::string error;
+            context_.clearHomeBackground(error);
+        }
+    }
+
+    if (enabled) {
+        const char* modeLabel = context_.i18n().text("ui.settings.background_auto");
+        if (settings.homeBackgroundMode == "tint") {
+            modeLabel = context_.i18n().text("ui.settings.background_tint");
+        } else if (settings.homeBackgroundMode == "color") {
+            modeLabel = context_.i18n().text("ui.settings.background_color");
+        }
+        ImGui::SetNextItemWidth(180.0f);
+        if (ImGui::BeginCombo(context_.i18n().text("ui.settings.background_mode"), modeLabel)) {
+            if (ImGui::Selectable(context_.i18n().text("ui.settings.background_auto"),
+                                  settings.homeBackgroundMode == "auto")) {
+                settings.homeBackgroundMode = "auto";
+                context_.saveSettings();
+            }
+            if (ImGui::Selectable(context_.i18n().text("ui.settings.background_tint"),
+                                  settings.homeBackgroundMode == "tint")) {
+                settings.homeBackgroundMode = "tint";
+                context_.saveSettings();
+            }
+            if (ImGui::Selectable(context_.i18n().text("ui.settings.background_color"),
+                                  settings.homeBackgroundMode == "color")) {
+                settings.homeBackgroundMode = "color";
+                context_.saveSettings();
+            }
+            ImGui::EndCombo();
+        }
+
+        ImGui::SetNextItemWidth(220.0f);
+        if (ImGui::SliderInt(context_.i18n().text("ui.settings.background_opacity"),
+                             &settings.homeBackgroundOpacity, Settings::kMinBackgroundOpacity,
+                             Settings::kMaxBackgroundOpacity, "%d%%")) {
+            context_.saveSettings();
+        }
+
+        const char* fitLabel = settings.homeBackgroundFit == "contain"
+                                   ? context_.i18n().text("ui.settings.background_contain")
+                                   : context_.i18n().text("ui.settings.background_cover");
+        ImGui::SetNextItemWidth(180.0f);
+        if (ImGui::BeginCombo(context_.i18n().text("ui.settings.background_fit"), fitLabel)) {
+            if (ImGui::Selectable(context_.i18n().text("ui.settings.background_cover"),
+                                  settings.homeBackgroundFit != "contain")) {
+                settings.homeBackgroundFit = "cover";
+                context_.saveSettings();
+            }
+            if (ImGui::Selectable(context_.i18n().text("ui.settings.background_contain"),
+                                  settings.homeBackgroundFit == "contain")) {
+                settings.homeBackgroundFit = "contain";
+                context_.saveSettings();
+            }
+            ImGui::EndCombo();
+        }
+
+        ImGui::TextDisabled("%s", context_.i18n().text("ui.settings.background_coverage"));
+        if (ImGui::Checkbox(context_.i18n().text("ui.settings.background_top"),
+                            &settings.homeBackgroundTop)) {
+            context_.saveSettings();
+        }
+        ImGui::SameLine();
+        bool bankCovered = true;
+        ImGui::BeginDisabled();
+        ImGui::Checkbox(context_.i18n().text("ui.settings.background_bank"), &bankCovered);
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Checkbox(context_.i18n().text("ui.settings.background_bottom"),
+                            &settings.homeBackgroundBottom)) {
+            context_.saveSettings();
+        }
+        wrappedHint(context_.i18n().text("ui.settings.background_bank_required"));
+    }
 }
 
 namespace {
@@ -492,10 +613,17 @@ void SettingsScreen::drawThemeApply() {
 }
 
 void SettingsScreen::drawTheme() {
-    // 主题页内容量会随展开状态大幅变化：放进独立滚动 child，并始终预留竖向滚动条。
-    // 这样展开到底后可以拖动页面或滚动条；固定预留宽度也能避免滚动条出现时横向重排。
-    if (ImGui::BeginChild("theme_settings_scroll", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None,
-                          ImGuiWindowFlags_AlwaysVerticalScrollbar)) {
+    // 主题页内容量会随展开状态大幅变化。右侧始终预留一条滚动槽，但只有内容真的
+    // 超出可视高度时才画滚动条：
+    //   * 无滚动条：child 主动缩掉 ScrollbarSize，留下空白槽位；
+    //   * 有滚动条：child 用满宽度，滚动条正好占用同一槽位，正文宽度不跳。
+    // 上一帧是否溢出记在 themeScrollNeeded_，最多一帧后稳定。
+    const float scrollbarReserve = ImGui::GetStyle().ScrollbarSize;
+    const float childWidth = themeScrollNeeded_ ? 0.0f : -scrollbarReserve;
+    const ImGuiWindowFlags scrollFlags =
+        themeScrollNeeded_ ? ImGuiWindowFlags_AlwaysVerticalScrollbar : ImGuiWindowFlags_NoScrollbar;
+    if (ImGui::BeginChild("theme_settings_scroll", ImVec2(childWidth, 0.0f),
+                          ImGuiChildFlags_None, scrollFlags)) {
         ScrollDrag scrollDrag;
 
     // 主题配色不再往下跳页：五个分组都在这一页上「展开 / 收起」，点标题那一行就行。
@@ -538,6 +666,7 @@ void SettingsScreen::drawTheme() {
     ImGui::Separator();
     wrappedHint(context_.i18n().text("ui.settings.theme_expand_hint"));
     ImGui::Dummy(ImVec2(0.0f, ImGui::GetStyle().ItemSpacing.y + 12.0f));
+        themeScrollNeeded_ = ImGui::GetScrollMaxY() > 0.5f;
     }
     ImGui::EndChild();
 }

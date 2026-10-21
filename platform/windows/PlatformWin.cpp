@@ -544,4 +544,10 @@ std::vector<std::string> fontCandidates() {
     return out;
 }
 
+std::string titleFontPath() {
+    const std::string path =
+        joinPath(joinPath(assetDirectory(), "fonts"), "LXGWMarkerGothic-Regular.ttf");
+    return fileExists(path) ? path : std::string();
+}
+
 }  // namespace quiz::platform

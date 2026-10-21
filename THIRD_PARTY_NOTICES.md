@@ -10,6 +10,7 @@
 | --- | --- | --- | --- |
 | Dear ImGui | 界面绘制 | MIT | `LICENSES/Dear-ImGui-MIT.txt` |
 | stb（随 ImGui 内置） | 字体/文本编辑等辅助代码 | Public Domain，部分可选 MIT | `LICENSES/stb-MIT.txt` |
+| stb_image 2.30 | 首页背景 PNG/JPEG/BMP 解码 | Public Domain / MIT | `LICENSES/stb-MIT.txt` |
 | Kotlin stdlib 2.2.10 | Android 运行时依赖 | Apache License 2.0 | `LICENSES/Apache-2.0.txt` |
 | JetBrains annotations 13.0 | Kotlin 运行时注解 | Apache License 2.0 | `LICENSES/Apache-2.0.txt` |
 | Android NDK / NativeActivity / libc++ | Android 原生构建与运行支持 | Apache License 2.0 及适用例外 | `LICENSES/Apache-2.0.txt`、`LICENSES/Android-NDK-NOTICE.txt` |
@@ -19,8 +20,9 @@
 | 资源 | 版权/来源 | 许可证 | 许可文本 |
 | --- | --- | --- | --- |
 | Noto Sans SC Regular | Copyright 2012 Google Inc. | SIL Open Font License 1.1 | `LICENSES/NotoSansSC-OFL.txt` |
+| LXGW Marker Gothic Regular（霞鹜漫黑） | LXGW Marker Gothic project，基于 Tanugo | SIL Open Font License 1.1 | `LICENSES/LXGWMarkerGothic-OFL.txt` |
 
-字体文件位于 `assets/fonts/`，原始许可文本同时保留在该目录的 `OFL.txt`。
+正文字体与首页标题字体均位于 `assets/fonts/`。Noto Sans SC 的原始许可同时保留在该目录的 `OFL.txt`；LXGW Marker Gothic 只随项目保留顶层规范化 TTF 和对应许可证。
 
 ## 图标
 

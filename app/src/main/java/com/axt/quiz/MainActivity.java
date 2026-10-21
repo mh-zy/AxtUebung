@@ -11,6 +11,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.provider.DocumentsContract;
 import android.provider.OpenableColumns;
 import android.text.Editable;
@@ -96,6 +97,8 @@ public class MainActivity extends NativeActivity {
 
     private EditText imeView;
     private OnBackInvokedCallback backCallback;
+    private static final long BACK_DEBOUNCE_MS = 450L;
+    private long lastBackRequestAt = 0L;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -157,6 +160,12 @@ public class MainActivity extends NativeActivity {
     }
 
     private void requestNativeBack() {
+        // 系统手势可能在一帧里回调多次；同一手势只允许进入 native 一次。
+        final long now = SystemClock.elapsedRealtime();
+        if (lastBackRequestAt != 0L && now - lastBackRequestAt < BACK_DEBOUNCE_MS) {
+            return;
+        }
+        lastBackRequestAt = now;
         nativeRequestBack();
     }
 

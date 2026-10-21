@@ -56,6 +56,17 @@ struct Settings {
     std::string uiColorPartial = "A93226";      // 部分分
     std::string uiColorDraft = "3F7FBF";        // 未提交（正在作答：选了 / 填了但还没交）
     std::string uiColorStar = "D35400";         // 收藏星标
+    /// 首页背景：none / asset:<文件名> / user:<文件名>
+    std::string homeBackgroundSource = "none";
+    /// auto = 自动判断灰度；tint = 强制主题染色；color = 原彩
+    std::string homeBackgroundMode = "auto";
+    /// 背景不透明度百分比（0~100）
+    int homeBackgroundOpacity = 22;
+    /// cover = 铺满裁切；contain = 完整显示
+    std::string homeBackgroundFit = "cover";
+    /// 顶部 / 底部是否显示背景；题库区始终显示
+    bool homeBackgroundTop = true;
+    bool homeBackgroundBottom = true;
 
     /// 允许的停顿区间：手改配置文件写歪了也会夹回这个范围
     static constexpr float kMinDelaySeconds = 0.3f;
@@ -69,6 +80,8 @@ struct Settings {
     /// 权重刷题补题间隔的允许范围
     static constexpr int kMinWeightedAppend = 2;
     static constexpr int kMaxWeightedAppend = 100;
+    static constexpr int kMinBackgroundOpacity = 0;
+    static constexpr int kMaxBackgroundOpacity = 100;
 
     /// 实际使用的停顿时间（已夹到 [kMinDelaySeconds, kMaxDelaySeconds]）
     float autoNextDelay() const;

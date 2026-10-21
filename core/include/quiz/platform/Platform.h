@@ -82,6 +82,9 @@ bool hasHardwareKeyboard();
 /// 系统字体候选路径（按优先级），用于渲染中文；找不到时界面会退回内置字体
 std::vector<std::string> fontCandidates();
 
+/// 品牌标题专用字体路径；未打包或不可读时返回空串，UI 会自动退回正文字体
+std::string titleFontPath();
+
 /// 打开系统的「选择文件」对话框（Windows 的资源管理器 / Android 的文档选择器）
 /// ----------------------------------------------------------------------------
 /// 拆成 begin / take 两步、且都不阻塞调用线程，是因为 Android 的选择器是**另一个 Activity**：

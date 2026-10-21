@@ -1,6 +1,9 @@
 #include "quiz/app/AppContext.h"
 
 #include <algorithm>
+#include <cctype>
+#include <cstdint>
+#include <cstdio>
 
 #include "quiz/platform/Platform.h"
 #include "quiz/progress/ProgressStore.h"
@@ -33,6 +36,39 @@ std::string peekLanguageName(const std::string& text, const std::string& fallbac
         }
     }
     return fallback;
+}
+
+std::string lowerAscii(std::string value) {
+    for (char& ch : value) {
+        ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+    }
+    return value;
+}
+
+bool safeBackgroundFileName(const std::string& name) {
+    return !name.empty() && name.find_first_of("/\\") == std::string::npos &&
+           name.find("..") == std::string::npos;
+}
+
+std::string backgroundExtension(const std::string& path) {
+    const size_t dot = path.find_last_of('.');
+    if (dot == std::string::npos) {
+        return std::string();
+    }
+    std::string ext = lowerAscii(path.substr(dot + 1));
+    if (ext == "jpeg") {
+        ext = "jpg";
+    }
+    return (ext == "png" || ext == "jpg" || ext == "bmp") ? ext : std::string();
+}
+
+uint64_t backgroundHash(const std::string& bytes) {
+    uint64_t hash = 1469598103934665603ull;
+    for (unsigned char ch : bytes) {
+        hash ^= static_cast<uint64_t>(ch);
+        hash *= 1099511628211ull;
+    }
+    return hash;
 }
 
 }  // namespace
@@ -638,6 +674,116 @@ bool AppContext::importBankFiles(const std::vector<std::string>& paths,
                               : i18n_.text("ui.home.import_none");
         return false;
     }
+    return true;
+}
+
+bool AppContext::importHomeBackground(const std::string& sourcePath, std::string& outError) {
+    const std::string extension = backgroundExtension(sourcePath);
+    if (extension.empty()) {
+        outError = i18n_.text("ui.settings.background_failed");
+        return false;
+    }
+    std::string bytes;
+    if (!platform::readTextFile(sourcePath, bytes) || bytes.empty()) {
+        outError = i18n_.text("ui.settings.background_failed");
+        return false;
+    }
+    if (bytes.size() > 32u * 1024u * 1024u) {
+        outError = i18n_.text("ui.settings.background_too_large");
+        return false;
+    }
+
+    char hashText[32] = {0};
+    std::snprintf(hashText, sizeof(hashText), "%016llx",
+                  static_cast<unsigned long long>(backgroundHash(bytes)));
+    const std::string fileName = std::string("home-") + hashText + "." + extension;
+    const std::string target =
+        platform::joinPath(platform::joinPath(platform::dataDirectory(), "background"), fileName);
+    if (!platform::writeTextFile(target, bytes)) {
+        outError = i18n_.text("ui.settings.background_failed");
+        return false;
+    }
+
+    const std::string previous = settings_.homeBackgroundSource;
+    settings_.homeBackgroundSource = "user:" + fileName;
+    if (!saveSettings()) {
+        settings_.homeBackgroundSource = previous;
+        platform::removeFile(target);
+        outError = i18n_.text("ui.settings.background_failed");
+        return false;
+    }
+    if (previous.rfind("user:", 0) == 0 && previous != settings_.homeBackgroundSource) {
+        const std::string oldName = previous.substr(5);
+        if (safeBackgroundFileName(oldName)) {
+            platform::removeFile(platform::joinPath(
+                platform::joinPath(platform::dataDirectory(), "background"), oldName));
+        }
+    }
+    homeBackgroundCache_.clear();
+    homeBackgroundCacheKey_.clear();
+    logInfo("已导入首页背景：%s", target.c_str());
+    return true;
+}
+
+bool AppContext::readHomeBackground(std::string& outBytes, std::string& outError) const {
+    outBytes.clear();
+    const std::string source = settings_.homeBackgroundSource;
+    if (source.empty() || source == "none") {
+        return false;
+    }
+    if (source == homeBackgroundCacheKey_ && !homeBackgroundCache_.empty()) {
+        outBytes = homeBackgroundCache_;
+        return true;
+    }
+
+    std::string fileName;
+    bool fromAsset = false;
+    if (source.rfind("asset:", 0) == 0) {
+        fileName = source.substr(6);
+        fromAsset = true;
+    } else if (source.rfind("user:", 0) == 0) {
+        fileName = source.substr(5);
+    } else {
+        outError = i18n_.text("ui.settings.background_failed");
+        return false;
+    }
+    if (!safeBackgroundFileName(fileName)) {
+        outError = i18n_.text("ui.settings.background_failed");
+        return false;
+    }
+
+    const bool ok = fromAsset ? platform::readAssetText("background/" + fileName, outBytes)
+                              : platform::readTextFile(
+                                    platform::joinPath(
+                                        platform::joinPath(platform::dataDirectory(), "background"),
+                                        fileName),
+                                    outBytes);
+    if (!ok || outBytes.empty()) {
+        outError = i18n_.text("ui.settings.background_failed");
+        return false;
+    }
+    homeBackgroundCache_ = outBytes;
+    homeBackgroundCacheKey_ = source;
+    return true;
+}
+
+bool AppContext::clearHomeBackground(std::string& outError) {
+    const std::string previous = settings_.homeBackgroundSource;
+    settings_.homeBackgroundSource = "none";
+    if (!saveSettings()) {
+        settings_.homeBackgroundSource = previous;
+        outError = i18n_.text("ui.settings.background_failed");
+        return false;
+    }
+    if (previous.rfind("user:", 0) == 0) {
+        const std::string oldName = previous.substr(5);
+        if (safeBackgroundFileName(oldName)) {
+            platform::removeFile(platform::joinPath(
+                platform::joinPath(platform::dataDirectory(), "background"), oldName));
+        }
+    }
+    homeBackgroundCache_.clear();
+    homeBackgroundCacheKey_.clear();
     return true;
 }
 

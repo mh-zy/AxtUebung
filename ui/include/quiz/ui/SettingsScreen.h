@@ -24,6 +24,7 @@ public:
         bool leaveToHome = false;     // 点了「返回首页」
         bool fontDirty = false;       // 换了语言，需要重建字体
         bool cancelAutoNext = false;  // 关掉了「答对自动跳下一题」
+        bool requestBackgroundImport = false;  // 打开系统文件选择器导入首页背景
     };
     Result draw();
 
@@ -75,6 +76,8 @@ private:
     int promptIndex_ = 0;   // 「提示词」页当前选中的那一项
     /// 主题配色页哪些分组是展开的（位 0 底色 / 1 文字 / 2 控件 / 3 状态 / 4 预设与应用）
     int themeOpen_ = 1;
+    /// 上一帧主题内容是否超出可视高度；用来只在实际需要时显示滚动条
+    bool themeScrollNeeded_ = false;
     IconButton iconButton_;   // 由 UiApp 注入；没注入时退回文字按钮
 };
 

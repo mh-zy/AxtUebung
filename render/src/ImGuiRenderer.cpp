@@ -9,6 +9,9 @@
 #include <map>
 #include <vector>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 #include "quiz/platform/Platform.h"
 #include "quiz/render/SvgIcon.h"
 #include "quiz/util/Log.h"
@@ -31,7 +34,9 @@ std::vector<Texture> g_textures;
 
 /// 图标纹理缓存：key = 资源名#尺寸#颜色
 std::map<std::string, ImTextureID> g_iconCache;
+std::map<std::string, BackgroundTexture> g_backgroundCache;
 ImFont* g_font = nullptr;
+ImFont* g_titleFont = nullptr;
 bool g_usingSystemFont = false;
 std::string g_fontPath;
 float g_fontScale = 1.0f;
@@ -465,6 +470,7 @@ bool initialize(int framebufferWidth, int framebufferHeight, float fontScale) {
     // 从零开始：纹理表和图标缓存必须一起清（同一个进程里可能被第二次调用，见 AndroidMain.cpp）
     g_textures.clear();
     g_iconCache.clear();
+    g_backgroundCache.clear();
     ImGuiIO& io = ImGui::GetIO();
     io.IniFilename = nullptr;      // 不写 imgui.ini，保持目录干净
     io.LogFilename = nullptr;
@@ -489,7 +495,9 @@ void shutdown() {
     // 图标纹理 id 的缓存必须跟纹理一起清：纹理没了，旧 id 要么指向别的纹理、要么根本不存在，
     // 界面上就表现为图标变成白块 / 花屏（同一个进程里 Activity 重建时踩过）。
     g_iconCache.clear();
+    g_backgroundCache.clear();
     g_font = nullptr;
+    g_titleFont = nullptr;
     if (ImGui::GetCurrentContext() != nullptr) {
         ImGui::DestroyContext();
     }
@@ -664,6 +672,7 @@ void rebuildFont(float fontScale) {
 
     io.Fonts->Clear();
     g_font = nullptr;
+    g_titleFont = nullptr;
     g_usingSystemFont = false;
     g_fontPath.clear();
 
@@ -698,6 +707,19 @@ void rebuildFont(float fontScale) {
         logWarn("Android 系统只带 CFF 轮廓的 Noto CJK：要显示中文得内置一个 TrueType 中文字体");
     }
 
+    const std::string titlePath = platform::titleFontPath();
+    if (!titlePath.empty() && platform::fileExists(titlePath) && looksLikeStbFont(titlePath)) {
+        ImFontConfig config = defaultFontConfig();
+        config.OversampleH = 2;   // 标题字号较大，横向采样多一点更清楚
+        g_titleFont = io.Fonts->AddFontFromFileTTF(titlePath.c_str(), fontSizePixels, &config, nullptr);
+        if (g_titleFont != nullptr) {
+            logInfo("已加载标题字体：%s", titlePath.c_str());
+        } else {
+            logWarn("标题字体加载失败：%s", titlePath.c_str());
+        }
+    } else if (!titlePath.empty()) {
+        logWarn("标题字体不是 stb 可读的 TrueType 轮廓：%s", titlePath.c_str());
+    }
 }
 
 bool usingSystemFont() {
@@ -706,6 +728,10 @@ bool usingSystemFont() {
 
 std::string fontPath() {
     return g_fontPath;
+}
+
+ImFont* titleFont() {
+    return g_titleFont;
 }
 
 // ---------------------------------------------------------------------------
@@ -773,8 +799,143 @@ ImTextureID loadIconTexture(const std::string& assetName, int sizePx, unsigned i
     return id;
 }
 
+BackgroundTexture loadBackgroundTexture(const std::string& cacheKey, const std::string& encoded,
+                                        BackgroundImageMode mode, unsigned int accentRgb,
+                                        unsigned int backgroundColorRgb, std::string* outError) {
+    char colors[16] = {0};
+    std::snprintf(colors, sizeof(colors), "%06X%06X", accentRgb & 0xFFFFFFu,
+                  backgroundColorRgb & 0xFFFFFFu);
+    const std::string key =
+        cacheKey + "#" + std::to_string(static_cast<int>(mode)) + "#" + colors;
+    const auto cached = g_backgroundCache.find(key);
+    if (cached != g_backgroundCache.end()) {
+        return cached->second;
+    }
+
+    int width = 0;
+    int height = 0;
+    int channels = 0;
+    stbi_uc* decoded = stbi_load_from_memory(
+        reinterpret_cast<const stbi_uc*>(encoded.data()), static_cast<int>(encoded.size()), &width,
+        &height, &channels, 4);
+    if (decoded == nullptr || width <= 0 || height <= 0) {
+        if (outError != nullptr) {
+            const char* reason = stbi_failure_reason();
+            *outError = reason != nullptr ? std::string("背景图片解码失败：") + reason
+                                          : std::string("背景图片解码失败");
+        }
+        if (decoded != nullptr) {
+            stbi_image_free(decoded);
+        }
+        return BackgroundTexture{};
+    }
+
+    constexpr int kMaxSide = 2048;
+    std::vector<unsigned char> scaled;
+    const unsigned char* rgba = decoded;
+    int outputWidth = width;
+    int outputHeight = height;
+    if (std::max(width, height) > kMaxSide) {
+        const float scale = static_cast<float>(kMaxSide) / static_cast<float>(std::max(width, height));
+        outputWidth = std::max(1, static_cast<int>(static_cast<float>(width) * scale + 0.5f));
+        outputHeight = std::max(1, static_cast<int>(static_cast<float>(height) * scale + 0.5f));
+        scaled.resize(static_cast<size_t>(outputWidth) * outputHeight * 4);
+        for (int y = 0; y < outputHeight; ++y) {
+            const float sy = (static_cast<float>(y) + 0.5f) * height / outputHeight - 0.5f;
+            const int y0 = std::clamp(static_cast<int>(std::floor(sy)), 0, height - 1);
+            const int y1 = std::min(y0 + 1, height - 1);
+            const float fy = std::clamp(sy - std::floor(sy), 0.0f, 1.0f);
+            for (int x = 0; x < outputWidth; ++x) {
+                const float sx =
+                    (static_cast<float>(x) + 0.5f) * width / outputWidth - 0.5f;
+                const int x0 = std::clamp(static_cast<int>(std::floor(sx)), 0, width - 1);
+                const int x1 = std::min(x0 + 1, width - 1);
+                const float fx = std::clamp(sx - std::floor(sx), 0.0f, 1.0f);
+                for (int c = 0; c < 4; ++c) {
+                    const float p00 = decoded[(static_cast<size_t>(y0) * width + x0) * 4 + c];
+                    const float p10 = decoded[(static_cast<size_t>(y0) * width + x1) * 4 + c];
+                    const float p01 = decoded[(static_cast<size_t>(y1) * width + x0) * 4 + c];
+                    const float p11 = decoded[(static_cast<size_t>(y1) * width + x1) * 4 + c];
+                    const float top = p00 + (p10 - p00) * fx;
+                    const float bottom = p01 + (p11 - p01) * fx;
+                    scaled[(static_cast<size_t>(y) * outputWidth + x) * 4 + c] =
+                        static_cast<unsigned char>(top + (bottom - top) * fy + 0.5f);
+                }
+            }
+        }
+        rgba = scaled.data();
+    }
+    bool tinted = mode == BackgroundImageMode::Tint;
+    if (mode == BackgroundImageMode::Auto) {
+        double chroma = 0.0;
+        size_t pixels = 0;
+        for (size_t i = 0; i < static_cast<size_t>(outputWidth) * outputHeight; ++i) {
+            const unsigned char* p = rgba + i * 4;
+            if (p[3] <= 16) {
+                continue;
+            }
+            const int maxChannel = std::max({p[0], p[1], p[2]});
+            const int minChannel = std::min({p[0], p[1], p[2]});
+            chroma += static_cast<double>(maxChannel - minChannel);
+            ++pixels;
+        }
+        tinted = pixels > 0 && chroma / static_cast<double>(pixels) < 12.0;
+    }
+
+    const int bgR = static_cast<int>((backgroundColorRgb >> 16) & 0xFF);
+    const int bgG = static_cast<int>((backgroundColorRgb >> 8) & 0xFF);
+    const int bgB = static_cast<int>(backgroundColorRgb & 0xFF);
+    const int accentR = static_cast<int>((accentRgb >> 16) & 0xFF);
+    const int accentG = static_cast<int>((accentRgb >> 8) & 0xFF);
+    const int accentB = static_cast<int>(accentRgb & 0xFF);
+
+    svg::Image image;
+    image.width = outputWidth;
+    image.height = outputHeight;
+    image.pixels.resize(static_cast<size_t>(outputWidth) * outputHeight);
+    for (size_t i = 0; i < image.pixels.size(); ++i) {
+        const unsigned char* p = rgba + i * 4;
+        const unsigned int alpha = p[3];
+        int r = p[0];
+        int g = p[1];
+        int b = p[2];
+        if (tinted && alpha > 0) {
+            const float gray =
+                (0.2126f * static_cast<float>(r) + 0.7152f * static_cast<float>(g) +
+                 0.0722f * static_cast<float>(b)) /
+                255.0f;
+            const float tone = 0.30f + 0.70f * gray;
+            r = static_cast<int>(static_cast<float>(bgR) +
+                                 static_cast<float>(accentR - bgR) * tone + 0.5f);
+            g = static_cast<int>(static_cast<float>(bgG) +
+                                 static_cast<float>(accentG - bgG) * tone + 0.5f);
+            b = static_cast<int>(static_cast<float>(bgB) +
+                                 static_cast<float>(accentB - bgB) * tone + 0.5f);
+        }
+        image.pixels[i] = static_cast<uint32_t>(r) | (static_cast<uint32_t>(g) << 8) |
+                          (static_cast<uint32_t>(b) << 16) |
+                          (static_cast<uint32_t>(alpha) << 24);
+    }
+    stbi_image_free(decoded);
+
+    BackgroundTexture result;
+    result.id = registerIconPixels(image);
+    result.width = outputWidth;
+    result.height = outputHeight;
+    result.tinted = tinted;
+    if (result.id == static_cast<ImTextureID>(0)) {
+        if (outError != nullptr) {
+            *outError = "背景纹理创建失败";
+        }
+        return result;
+    }
+    g_backgroundCache[key] = result;
+    return result;
+}
+
 void clearIconCache() {
     g_iconCache.clear();
+    g_backgroundCache.clear();
 }
 
 }  // namespace quiz::render

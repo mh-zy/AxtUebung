@@ -335,6 +335,7 @@ void android_main(struct android_app* androidApp) {
 
     state->lastFrameTime = quiz::platform::monotonicSeconds();
     state->lastInputTime = state->lastFrameTime;
+    double lastBackHandledAt = -1.0;
 
     while (true) {
         int events = 0;
@@ -356,7 +357,13 @@ void android_main(struct android_app* androidApp) {
         }
 
         if (quiz::platform::android::takeBackRequest()) {
-            handleBack(state);
+            // 第二层消抖：即使 Java 端或系统迟到的重复请求已经入队，
+            // 也只允许 350ms 内真正执行一次页面后退。
+            const double backNow = quiz::platform::monotonicSeconds();
+            if (lastBackHandledAt < 0.0 || backNow - lastBackHandledAt >= 0.35) {
+                lastBackHandledAt = backNow;
+                handleBack(state);
+            }
         }
 
         if (!state->windowReady) {

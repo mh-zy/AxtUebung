@@ -32,6 +32,9 @@ assets/icons/redo.svg
 assets/icons/software-download.svg
 assets/icons/software-upload.svg
 
+# 第三方字体原始压缩包目录；仓库只保留顶层规范化 TTF 和许可证
+assets/fonts/LxgwMarkerGothic-v1.004/
+
 # 备份与编辑器/系统文件
 backups/
 *.bak-*

@@ -83,13 +83,16 @@ function Copy-TreeFiltered {
     param(
         [string]$Source,
         [string]$Destination,
-        [string[]]$ExcludeNames = @()
+        [string[]]$ExcludeNames = @(),
+        [string[]]$ExcludeRelativePatterns = @()
     )
     if (-not (Test-Path -LiteralPath $Source -PathType Container)) {
         throw "缺少发布目录：$Source"
     }
     $sourceFull = [System.IO.Path]::GetFullPath($Source).TrimEnd('\', '/')
     foreach ($file in Get-ChildItem -LiteralPath $Source -Recurse -File -Force) {
+        $relative = $file.FullName.Substring($sourceFull.Length).TrimStart('\', '/')
+        $relativeMatch = $relative.Replace('\', '/')
         $excluded = $false
         foreach ($pattern in $ExcludeNames) {
             if ($file.Name -like $pattern) {
@@ -97,10 +100,17 @@ function Copy-TreeFiltered {
                 break
             }
         }
+        if (-not $excluded) {
+            foreach ($pattern in $ExcludeRelativePatterns) {
+                if ($relativeMatch -like $pattern) {
+                    $excluded = $true
+                    break
+                }
+            }
+        }
         if ($excluded) {
             continue
         }
-        $relative = $file.FullName.Substring($sourceFull.Length).TrimStart('\', '/')
         $target = Join-Path $Destination $relative
         $parent = Split-Path -Parent $target
         New-Item -ItemType Directory -Path $parent -Force | Out-Null
@@ -248,7 +258,7 @@ if (-not $SkipWindows) {
             '*.bak*', '*.quiz', 'chevron-left.svg', 'move-right.svg',
             'play-track-next.svg', 'redo.svg', 'software-download.svg',
             'software-upload.svg', 'CN_title.svg'
-        )
+        ) -ExcludeRelativePatterns @('fonts/LxgwMarkerGothic-v1.004/*')
     Copy-TreeFiltered -Source (Join-Path $projectRoot 'LICENSES') `
         -Destination (Join-Path $packageRoot 'LICENSES')
 
@@ -263,6 +273,9 @@ if (-not $SkipWindows) {
         Copy-RequiredFile -Source (Join-Path $projectRoot ('docs\' + $name)) `
             -Destination (Join-Path $packageRoot ('docs\' + $name))
     }
+    # README 直接引用这些截图；发布 ZIP 里也要保留，否则解压后图片是坏链。
+    Copy-TreeFiltered -Source (Join-Path $projectRoot 'docs\images') `
+        -Destination (Join-Path $packageRoot 'docs\images')
 
     Compress-Archive -Path $packageRoot -DestinationPath $windowsZip `
         -CompressionLevel Optimal

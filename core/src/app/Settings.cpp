@@ -71,6 +71,15 @@ std::string Settings::serialize() const {
     out += "ui_color_draft = " + uiColorDraft + "\n";
     out += "ui_color_star = " + uiColorStar + "\n";
     out += "ui_theme_name = " + uiThemeName + "\n";
+    out += "home_background_source = " +
+           (homeBackgroundSource.empty() ? std::string("none") : homeBackgroundSource) + "\n";
+    out += "home_background_mode = " +
+           (homeBackgroundMode.empty() ? std::string("auto") : homeBackgroundMode) + "\n";
+    out += "home_background_opacity = " + std::to_string(homeBackgroundOpacity) + "\n";
+    out += "home_background_fit = " +
+           (homeBackgroundFit.empty() ? std::string("cover") : homeBackgroundFit) + "\n";
+    out += std::string("home_background_top = ") + (homeBackgroundTop ? "1" : "0") + "\n";
+    out += std::string("home_background_bottom = ") + (homeBackgroundBottom ? "1" : "0") + "\n";
     return out;
 }
 
@@ -186,6 +195,25 @@ Settings Settings::parse(const std::string& text) {
             result.uiColorStar = io::trim(line.value);
         } else if (line.key == "ui_theme_name") {
             result.uiThemeName = io::trim(line.value);
+        } else if (line.key == "home_background_source") {
+            result.homeBackgroundSource = io::trim(line.value);
+        } else if (line.key == "home_background_mode") {
+            const std::string value = io::trim(line.value);
+            result.homeBackgroundMode =
+                (value == "tint" || value == "color") ? value : "auto";
+        } else if (line.key == "home_background_opacity") {
+            const int value = std::atoi(line.value.c_str());
+            result.homeBackgroundOpacity =
+                value < Settings::kMinBackgroundOpacity
+                    ? Settings::kMinBackgroundOpacity
+                    : (value > Settings::kMaxBackgroundOpacity ? Settings::kMaxBackgroundOpacity
+                                                               : value);
+        } else if (line.key == "home_background_fit") {
+            result.homeBackgroundFit = io::trim(line.value) == "contain" ? "contain" : "cover";
+        } else if (line.key == "home_background_top") {
+            result.homeBackgroundTop = toBool(line.value);
+        } else if (line.key == "home_background_bottom") {
+            result.homeBackgroundBottom = toBool(line.value);
         }
     }
     return result;

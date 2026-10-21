@@ -291,18 +291,21 @@ ExamPaper buildExamPaper(const QuestionBank& bank, const ExamSpec& exam, int see
             picked.push_back(item);
         }
 
-        if (filteredByScore > 0) {
-            paper.issues.push_back(
-                {line, "第 " + toText(ruleNo) + " 条抽题规则写了 score = " + toText(rule.score) +
-                           "，有 " + toText(filteredByScore) + " 段材料的总分对不上，没进候选" +
-                           materialTotalsHint(units)});
-        }
-        if (target >= 0 && taken < target) {
+        if (target >= 0 && taken < target) {   // 只抽到 x/y
             paper.issues.push_back(
                 {line, "第 " + toText(ruleNo) + " 条抽题规则只抽到 " + toText(taken) + "/" +
                            toText(target) + "（可用的题不够，已把能抽到的都放进卷）"});
+
+            // 材料段不够用时才提示总分不匹配；如果其他材料已经补足，
+            // 单纯被 score 过滤掉的候选属于正常筛选，不再打扰用户。
+            if (filteredByScore > 0) {
+                paper.issues.push_back(
+                    {line, "第 " + toText(ruleNo) + " 条抽题规则写了 score = " + toText(rule.score) +
+                           "，有 " + toText(filteredByScore) + " 段材料的总分对不上，没进候选" +
+                               materialTotalsHint(units)});
+            }
         }
-        if (extraFromMaterial > 0) {
+        if (extraFromMaterial > 0) {   // 材料段里有几道小题没被规则收进卷面，算作「补齐」的
             paper.issues.push_back(
                 {line, "第 " + toText(ruleNo) + " 条抽题规则为材料段补齐了 " +
                            toText(extraFromMaterial) + " 道小题（材料题整段作答）"});
