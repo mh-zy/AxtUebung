@@ -2110,6 +2110,7 @@ void UiApp::drawQuiz() {
             cardHeight += ImGui::GetStyle().ItemSpacing.y * 2.0f + ImGui::GetTextLineHeight() +
                           wrappedTextHeight(analysis, innerWidth);
         }
+        cardHeight += 8.0f;   // 底部余量：避免边界取整后出现一格多余滚动条
         cardHeight = std::min(cardHeight, 340.0f);   // 解析太长就让卡片自己滚
         ImGui::Spacing();
         if (cardBegin("verdict", cardHeight)) {
@@ -2394,6 +2395,8 @@ void UiApp::drawPaper(const QuestionBank& bank, const std::vector<int>& group) {
                 ImGui::Separator();
             }
         }
+        // 给页面底部留一点余量，避免最后一道题的解析贴边时出现无意义滚动条。
+        ImGui::Dummy(ImVec2(0.0f, 8.0f));
     }
     ImGui::EndChild();
 
@@ -2499,6 +2502,7 @@ void UiApp::drawPaperQuestion(const QuestionBank& bank, int index, int part, int
     const Question& question = bank.questions[static_cast<size_t>(index)];
     const bool examRunning = session.isExamMode();
     const bool locked = session.isSubmittedAt(index);
+    const bool editable = !locked;
     // 考试中「已作答」= 草稿里有内容（还没判分）；平时 = 这道小题交过了
     const bool answered = examRunning ? session.isExamAnsweredAt(index) : locked;
     ImGui::PushID(index);
@@ -2599,7 +2603,7 @@ void UiApp::drawPaperQuestion(const QuestionBank& bank, int index, int part, int
                 }
                 ImGui::PushID(i);
                 if (ImGui::Button(indexToLetter(i).c_str(), ImVec2(buttonWidth, 0.0f))) {
-                    if (!answered) {
+                    if (editable) {
                         session.setOrderedSlotAt(index, slot, picked ? -1 : i);
                         cancelAutoNext();
                     }
@@ -2639,7 +2643,7 @@ void UiApp::drawPaperQuestion(const QuestionBank& bank, int index, int part, int
                 state = RowState::Selected;
             }
             ImGui::PushID(i);
-            if (optionRow("##paper_option", letter, text, state, !answered, paperAccent,
+            if (optionRow("##paper_option", letter, text, state, editable, paperAccent,
                           paperCorrect, paperWrong)) {
                 session.selectOptionAt(index, i);
                 cancelAutoNext();
@@ -3094,7 +3098,9 @@ void UiApp::drawStats() {
             maxCount = std::max(maxCount, day.second);
         }
         const float barsHeight = ImGui::GetFontSize() * 3.4f;
-        if (cardBegin("stats_chart", cardPadding() * 2.0f + barsHeight + lineH + 16.0f)) {
+        const float chartTopPadding = lineH + 4.0f;
+        if (cardBegin("stats_chart",
+                      cardPadding() * 2.0f + chartTopPadding + barsHeight + lineH + 16.0f)) {
             const ImVec2 origin = ImGui::GetCursorScreenPos();
             const float width = ImGui::GetContentRegionAvail().x;
             const int count = static_cast<int>(days.size());
@@ -3107,7 +3113,7 @@ void UiApp::drawStats() {
                 const float barWidth = std::max(slot * 0.42f, 8.0f);
                 const float x = origin.x + slot * static_cast<float>(k) + (slot - barWidth) * 0.5f;
                 const float barHeight = std::max(barsHeight * ratio, item.second > 0 ? 4.0f : 2.0f);
-                const float y = origin.y + barsHeight - barHeight;
+                const float y = origin.y + chartTopPadding + barsHeight - barHeight;
                 draw->AddRectFilled(ImVec2(x, y), ImVec2(x + barWidth, y + barHeight),
                                     item.second > 0 ? accentColor : surfaceColor(0.30f), 4.0f);
                 if (item.second > 0) {
@@ -3119,10 +3125,11 @@ void UiApp::drawStats() {
                 const std::string label =
                     item.first.size() >= 10 ? item.first.substr(5) : item.first;
                 const float labelW = ImGui::CalcTextSize(label.c_str()).x;
-                draw->AddText(ImVec2(x + (barWidth - labelW) * 0.5f, origin.y + barsHeight + 2.0f),
+                draw->AddText(ImVec2(x + (barWidth - labelW) * 0.5f,
+                                     origin.y + chartTopPadding + barsHeight + 2.0f),
                               ImGui::GetColorU32(ImGuiCol_TextDisabled), label.c_str());
             }
-            ImGui::Dummy(ImVec2(width, barsHeight + lineH + 6.0f));
+            ImGui::Dummy(ImVec2(width, chartTopPadding + barsHeight + lineH + 6.0f));
         }
         cardEnd();
 

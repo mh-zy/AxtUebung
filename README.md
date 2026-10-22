@@ -6,7 +6,7 @@
 
 一个本地优先、离线运行的刷题应用。Windows 与 Android 共用同一套 C++ 核心，支持固定格式题库、多种刷题模式、材料题、考试模式、进度统计以及通过系统文件选择器导入导出。
 
-**当前版本：0.3.0（内测中）**<br>
+**当前版本：0.3.1-alpha（内测中）**<br>
 开发者：mh-zy（@gcw_7wG3NXCK）<br>
 联系邮箱：jytc4399@163.com<br>
 开源仓库：[AtomGit](https://atomgit.com/gcw_7wG3NXCK/AxtUebing)
