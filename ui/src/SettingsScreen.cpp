@@ -776,8 +776,6 @@ void SettingsScreen::drawManual() {
     };
     const ManualEntry entries[] = {
         {"ui.manual.overview", Page::ManualOverview},
-        {"ui.manual.import", Page::ManualImport},
-        {"ui.manual.export", Page::ManualExport},
         {"ui.manual.icons", Page::ManualIcons},
     };
     for (const ManualEntry& entry : entries) {

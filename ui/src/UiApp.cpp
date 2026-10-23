@@ -506,7 +506,7 @@ bool iconButton(const char* id, const char* svg, const std::string& fallbackLabe
 /// 手机上不能指望「悬停提示」，所以「现在选的是哪个模式」要直接画出来：
 /// 强调色淡底 + 描边 + 右上角对勾角标 + 文字换成强调色。
 bool modeButton(const char* id, const char* svg, const std::string& label, bool selected,
-                unsigned int accentRgb) {
+                unsigned int accentRgb, const std::string& fullLabel = {}) {
     const float side = iconButtonSide();
     const ImU32 accent = toImU32(accentRgb);
     ImDrawList* const draw = ImGui::GetWindowDrawList();
@@ -519,6 +519,8 @@ bool modeButton(const char* id, const char* svg, const std::string& label, bool 
                       2.0f);
     }
     const bool clicked = iconButton(id, svg, label);
+    const bool iconHovered =
+        ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled);
     if (selected) {
         const ImVec2 badge(iconAt.x + side * 0.78f, iconAt.y + side * 0.22f);
         const float radius = ImGui::GetFontSize() * 0.42f;
@@ -530,6 +532,9 @@ bool modeButton(const char* id, const char* svg, const std::string& label, bool 
     ImGui::TextColored(
         ImGui::ColorConvertU32ToFloat4(selected ? accent : ImGui::GetColorU32(ImGuiCol_TextDisabled)),
         "%s", label.c_str());
+    if (!fullLabel.empty() && fullLabel != label && iconHovered) {
+        ImGui::SetTooltip("%s", fullLabel.c_str());
+    }
     return clicked;
 }
 
@@ -1560,12 +1565,14 @@ void UiApp::drawHome() {
                 (std::string(item.value) != "exam" || !context_.activeBankExams().empty());
             const bool selected =
                 implemented && context_.settings().homeOrder == std::string(item.value);
+            const std::string fullLabel = context_.i18n().text(item.labelKey);
             ImGui::PushID(k);
             ImGui::BeginGroup();
             if (!implemented) {
                 ImGui::BeginDisabled();   // 功能还没做：灰掉、点不动
             }
-            if (modeButton("##mode", item.svg, shortLabel, selected, colorAccentRgb_) && implemented) {
+            if (modeButton("##mode", item.svg, shortLabel, selected, colorAccentRgb_, fullLabel) &&
+                implemented) {
                 context_.settings().homeOrder = item.value;
                 context_.saveSettings();   // 选中态已经能看出切到哪个模式，不再弹 toast
             }

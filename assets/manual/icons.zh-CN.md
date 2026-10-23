@@ -25,7 +25,7 @@
 - @icon:export-tags.svg 查看或添加标签。
 - @icon:grid.svg 打开题目总览。
 - @icon:file-x.svg 打开当前题库的错题本。
-- @icon:m-file-x.svg 从错题本进入并答对后，将当前题移出错题本。
+- @icon:file-x.svg 从错题本进入并答对后，将当前题移出错题本。
 
 ## 题库卡片
 

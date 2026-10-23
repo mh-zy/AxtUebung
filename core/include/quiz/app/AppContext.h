@@ -142,7 +142,8 @@ public:
     bool exportTaggedTo(const std::vector<std::string>& tags, bool bakeUserTags,
                         const std::string& path, std::string& outError);
 
-    /// 导入题库文件：拷进 data/banks（.txt/.text 等后缀会统一改成 .quiz），
+    /// 导入题库文件：解析普通文本或 Word 文档正文，再拷进 data/banks
+    /// （所有接受的来源后缀都会统一改成 .quiz），
     /// 导入前先解析一遍，坏文件不会进题库目录。
     /// 返回 true 表示至少成功一个；outNames 是导入进来的题库标题。
     bool importBankFiles(const std::vector<std::string>& paths, std::vector<std::string>& outNames,

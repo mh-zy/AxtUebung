@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <string>
 
 #include "quiz/app/Settings.h"
@@ -13,6 +14,7 @@
 #include "quiz/app/ThemePreset.h"
 #include "quiz/i18n/I18n.h"
 #include "quiz/io/BankFormat.h"
+#include "quiz/io/DocumentText.h"
 #include "quiz/io/ExamBuilder.h"
 #include "quiz/model/Scoring.h"
 #include "quiz/progress/ProgressStore.h"
@@ -308,16 +310,108 @@ void testNoAnswerReplay() {
     CHECK_EQ(again.stats().correct, 1);
 }
 
+void appendU16Le(std::string& out, uint16_t value) {
+    out.push_back(static_cast<char>(value & 0xFF));
+    out.push_back(static_cast<char>((value >> 8) & 0xFF));
+}
+
+void appendU32Le(std::string& out, uint32_t value) {
+    out.push_back(static_cast<char>(value & 0xFF));
+    out.push_back(static_cast<char>((value >> 8) & 0xFF));
+    out.push_back(static_cast<char>((value >> 16) & 0xFF));
+    out.push_back(static_cast<char>((value >> 24) & 0xFF));
+}
+
+std::string decodeBase64(const std::string& text) {
+    static const char alphabet[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    int bits = 0;
+    int value = 0;
+    std::string out;
+    for (char ch : text) {
+        if (ch == '=') {
+            break;
+        }
+        const char* found = std::strchr(alphabet, ch);
+        if (found == nullptr) {
+            continue;
+        }
+        value = (value << 6) | static_cast<int>(found - alphabet);
+        bits += 6;
+        if (bits >= 8) {
+            bits -= 8;
+            out.push_back(static_cast<char>((value >> bits) & 0xFF));
+        }
+    }
+    return out;
+}
+
+std::string makeZipWithWordDocument(const std::string& compressed, uint32_t rawSize) {
+    const std::string name = "word/document.xml";
+    std::string zip;
+    // 本地文件头
+    appendU32Le(zip, 0x04034B50u);
+    appendU16Le(zip, 20);
+    appendU16Le(zip, 0);
+    appendU16Le(zip, 8);   // deflate
+    appendU16Le(zip, 0);
+    appendU16Le(zip, 0);
+    appendU32Le(zip, 0);   // CRC 不参与正文提取
+    appendU32Le(zip, static_cast<uint32_t>(compressed.size()));
+    appendU32Le(zip, rawSize);
+    appendU16Le(zip, static_cast<uint16_t>(name.size()));
+    appendU16Le(zip, 0);
+    zip += name;
+    zip += compressed;
+
+    // 中央目录
+    const uint32_t centralOffset = static_cast<uint32_t>(zip.size());
+    appendU32Le(zip, 0x02014B50u);
+    appendU16Le(zip, 20);
+    appendU16Le(zip, 20);
+    appendU16Le(zip, 0);
+    appendU16Le(zip, 8);
+    appendU16Le(zip, 0);
+    appendU16Le(zip, 0);
+    appendU32Le(zip, 0);
+    appendU32Le(zip, static_cast<uint32_t>(compressed.size()));
+    appendU32Le(zip, rawSize);
+    appendU16Le(zip, static_cast<uint16_t>(name.size()));
+    appendU16Le(zip, 0);
+    appendU16Le(zip, 0);
+    appendU16Le(zip, 0);
+    appendU16Le(zip, 0);
+    appendU32Le(zip, 0);
+    appendU32Le(zip, 0);
+    zip += name;
+    const uint32_t centralSize = static_cast<uint32_t>(zip.size()) - centralOffset;
+
+    // 中央目录结束记录
+    appendU32Le(zip, 0x06054B50u);
+    appendU16Le(zip, 0);
+    appendU16Le(zip, 0);
+    appendU16Le(zip, 1);
+    appendU16Le(zip, 1);
+    appendU32Le(zip, centralSize);
+    appendU32Le(zip, centralOffset);
+    appendU16Le(zip, 0);
+    return zip;
+}
+
 void testImportHelpers() {
     std::printf("导入：文件名规范化与后缀判断\n");
     CHECK(quiz::io::isBankTextFileName("demo.quiz"));
     CHECK(quiz::io::isBankTextFileName("题库.TXT"));
     CHECK(quiz::io::isBankTextFileName("a.text"));
+    CHECK(quiz::io::isBankTextFileName("题库.DOC"));
+    CHECK(quiz::io::isBankTextFileName("题库.docx"));
+    CHECK(quiz::io::isBankTextFileName("模板.dotm"));
     CHECK(!quiz::io::isBankTextFileName("demo.json"));
     CHECK(!quiz::io::isBankTextFileName("quiz"));
 
     CHECK_EQ(quiz::io::normalizeBankFileName("demo.quiz"), std::string("demo.quiz"));
     CHECK_EQ(quiz::io::normalizeBankFileName("D:\\下载\\我的题.txt"), std::string("我的题.quiz"));
+    CHECK_EQ(quiz::io::normalizeBankFileName("D:\\下载\\题库.docx"), std::string("题库.quiz"));
     CHECK_EQ(quiz::io::normalizeBankFileName("/tmp/a.b.text"), std::string("a.b.quiz"));
     CHECK_EQ(quiz::io::normalizeBankFileName("  .hidden  "), std::string("hidden.quiz"));
     CHECK_EQ(quiz::io::normalizeBankFileName("a:b*c?.txt"), std::string("a_b_c_.quiz"));
@@ -328,6 +422,40 @@ void testImportHelpers() {
     quiz::io::LoadResult result = quiz::io::loadBank(kSampleBank, fileName);
     CHECK(result.ok());
     CHECK_EQ(result.bank.meta.id, std::string("test-bank"));
+
+    // 旧 .doc 只要内容本身是可读题库文本，也允许进入同一套解析器。
+    const quiz::io::DocumentTextResult plainDoc =
+        quiz::io::extractBankTextDocument("题库.doc", kSampleBank);
+    CHECK(plainDoc.ok);
+    CHECK(quiz::io::loadBank(plainDoc.text, "题库.quiz").ok());
+
+    std::string legacyBinary("\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1", 8);
+    legacyBinary.append("\0\x01\x02", 3);
+    legacyBinary += kSampleBank;
+    const quiz::io::DocumentTextResult recoveredDoc =
+        quiz::io::extractBankTextDocument("旧版题库.doc", legacyBinary);
+    CHECK(recoveredDoc.ok);
+    CHECK(quiz::io::loadBank(recoveredDoc.text, "旧版题库.quiz").ok());
+
+    // 真实 DOCX 的 word/document.xml 通常是 deflate。这里用固定压缩样本覆盖
+    // ZIP 中央目录、inflate、XML 段落和实体还原整条路径。
+    const std::string compressedWordXml = decodeBase64(
+        "jZExTgMxEEWvMtqCLuslBcWy3ohcgiKicNZDYuHxGHtgNweg5RbUHACOQ+6BDEJISGjT/Jni/a8Z/"
+        "W41kYdHTNlx0NV53VSrvhtby8MDYRCYyIfcjrrai8RWqTzskUyuOWKYyN9yIiO55rRTIycbEw+Ysws78mrZ"
+        "NBeKjAtVidyyPZQZi6Qi0m8Ixdx0quxF05fGv5izoKHEL7Ym3M3i4sQjaLjmZOHMULyE9Sm+zf38KXKIJbp"
+        "86HGWzoIEGj7enr+POb6+H59eZm0cxXEADVeno+tZ1IQ8YvonVf0UpH7L7z8B");
+    const std::string docx = makeZipWithWordDocument(compressedWordXml, 542);
+    const quiz::io::DocumentTextResult wordDocument =
+        quiz::io::extractBankTextDocument("Word 题库.docx", docx);
+    CHECK(wordDocument.ok);
+    const quiz::io::LoadResult wordBank =
+        quiz::io::loadBank(wordDocument.text, "Word 题库.quiz");
+    CHECK(wordBank.ok());
+    CHECK_EQ(wordBank.bank.meta.title, std::string("Word & Bank"));
+    CHECK_EQ(wordBank.bank.questions.size(), size_t(1));
+    if (!wordBank.bank.questions.empty()) {
+        CHECK_EQ(wordBank.bank.questions[0].stem, std::string("从 Word 导入"));
+    }
 }
 
 void testWeightedPractice() {

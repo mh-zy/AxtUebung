@@ -42,6 +42,13 @@ add_library(imgui STATIC
 target_include_directories(imgui PUBLIC ${IMGUI_DIR})
 target_compile_features(imgui PUBLIC cxx_std_17)
 
+# stb_image 同时提供图片解码和 zlib inflate：DOCX 读取 word/document.xml 时复用后者。
+add_library(stb_image STATIC
+    third_party/stb/stb_image_impl.cpp
+)
+target_include_directories(stb_image PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/third_party/stb)
+target_compile_features(stb_image PUBLIC cxx_std_17)
+
 add_subdirectory(core)
 add_subdirectory(render)
 add_subdirectory(ui)

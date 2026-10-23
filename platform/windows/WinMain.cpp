@@ -728,7 +728,7 @@ void printUsage() {
         "                                                  导出题库 / 错题本 / 收藏题\n"
         "  AxtQuiz.exe --import <文件> [--import <文件>…]   把题库文件导入 data/banks\n"
         "  AxtQuiz.exe --pick-test open|save               调试：弹出系统文件对话框\n"
-        "                                                  接受 .quiz / .txt / .text，导入后统一成 .quiz\n");
+        "                                                  接受 .quiz/.txt/.text 与 .doc/.docx/.docm/.dot/.dotx/.dotm，导入后统一成 .quiz\n");
 }
 
 }  // namespace

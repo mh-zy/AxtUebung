@@ -6,7 +6,7 @@
 
 一个本地优先、离线运行的刷题应用。Windows 与 Android 共用同一套 C++ 核心，支持固定格式题库、多种刷题模式、材料题、考试模式、进度统计以及通过系统文件选择器导入导出。
 
-**当前版本：0.4.0（内测中）**<br>
+**当前版本：1.0.0-alpha（内测中）**<br>
 开发者：mh-zy（@gcw_7wG3NXCK）<br>
 联系邮箱：jytc4399@163.com<br>
 开源仓库：[AtomGit](https://atomgit.com/gcw_7wG3NXCK/AxtUebing)
@@ -25,7 +25,8 @@
 - **进度与统计**：本地保存作答次数、对错、收藏、标签、累计统计。
 - **个性化**：主题配色、首页背景、界面比例、语言包、正文字体与独立品牌标题字体、提示词。
 - **答题操作**：底部提交与翻题栏固定，正文独立滚动，不再随题目长度上下移动。
-- **使用手册**：首次启动提示阅读说明，设置内提供概览、导入图解、导出图解和图标讲解。
+- **使用手册**：首次启动提示阅读说明，设置内提供概览和图标讲解。
+- **Word 题库导入**：可在内容可解析时读取 `.doc`、`.docx`、`.docm`、`.dot`、`.dotx` 和 `.dotm`，导入后统一保存为 `.quiz`。
 - **公开提示词**：中文/英文题库格式修正提示词随源码发布，便于批量整理题库。
 - **触屏手势**：列表任意位置拖动、控件起手纵向拖动、惯性滚动。
 
@@ -120,7 +121,7 @@ powershell -ExecutionPolicy Bypass -File tools\release.ps1 -DryRun -AllowDirty
 生成发布包：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File tools\release.ps1 -ExpectedVersion 0.2.3
+powershell -ExecutionPolicy Bypass -File tools\release.ps1 -ExpectedVersion 1.0.0-alpha
 ```
 
 脚本默认要求 `Version.h` 与 `app/build.gradle.kts` 的版本一致、Git 工作区干净，并生成：

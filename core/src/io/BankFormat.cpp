@@ -1004,7 +1004,8 @@ QuestionBank buildTaggedBank(const QuestionBank& bank, const BankProgress& progr
 }
 
 const std::vector<std::string>& bankFileExtensions() {
-    static const std::vector<std::string> kExtensions = {".quiz", ".txt", ".text"};
+    static const std::vector<std::string> kExtensions = {
+        ".quiz", ".txt", ".text", ".doc", ".docx", ".docm", ".dot", ".dotx", ".dotm"};
     return kExtensions;
 }
 
@@ -1048,7 +1049,7 @@ std::string normalizeBankFileName(const std::string& fileName) {
     while (!name.empty() && (name.back() == ' ' || name.back() == '\t')) {
         name.pop_back();
     }
-    // 3) 去掉已有后缀（.quiz / .txt / .text 都算）
+    // 3) 去掉已有后缀（题库文本和 Word 系列都算）
     const size_t dot = name.find_last_of('.');
     if (dot != std::string::npos && dot > 0) {
         name = name.substr(0, dot);

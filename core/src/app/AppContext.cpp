@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstdio>
 
+#include "quiz/io/DocumentText.h"
 #include "quiz/platform/Platform.h"
 #include "quiz/progress/ProgressStore.h"
 #include "quiz/util/Log.h"
@@ -642,12 +643,20 @@ bool AppContext::importBankFiles(const std::vector<std::string>& paths,
     const std::string banksDir = platform::joinPath(platform::dataDirectory(), "banks");
     int failed = 0;
     for (const std::string& path : paths) {
-        std::string text;
-        if (!platform::readTextFile(path, text)) {
+        std::string bytes;
+        if (!platform::readTextFile(path, bytes)) {
             ++failed;
             logWarn("导入失败（读不到文件）：%s", path.c_str());
             continue;
         }
+        io::DocumentTextResult document = io::extractBankTextDocument(path, bytes);
+        if (!document.ok) {
+            ++failed;
+            logWarn("导入失败（文档正文无法解析）：%s：%s", path.c_str(),
+                    document.error.c_str());
+            continue;
+        }
+        std::string text = std::move(document.text);
         const std::string fileName = io::normalizeBankFileName(path);
         // 先解析一遍：坏文件不进题库目录，免得启动后到处是报错卡片
         io::LoadResult parsed = io::loadBank(text, fileName);

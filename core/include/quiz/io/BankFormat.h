@@ -56,8 +56,12 @@ QuestionBank buildTaggedBank(const QuestionBank& bank, const BankProgress& progr
 /// 单独校验一个题库文本（命令行工具与测试使用）
 std::vector<Issue> validateBank(const std::string& text);
 
-/// 导入题库时接受的文件后缀（题库本来就是纯文本，.txt / .text 也一起收）。
-/// 返回的都是小写、带点，例如 ".quiz"
+/// 导入题库时接受的文件后缀。
+///
+/// `.quiz/.txt/.text` 直接按纯文本解析；Word 系列会先尝试提取正文，
+/// 其中 Open XML 文档（.docx/.docm/.dotx/.dotm）可读取标准
+/// `word/document.xml`，旧 `.doc` 仅在内容可恢复为题库文本时接受。
+/// 返回的都是小写、带点，例如 ".quiz"。
 const std::vector<std::string>& bankFileExtensions();
 
 /// 文件名是不是题库文本文件（按后缀判断，大小写不敏感）

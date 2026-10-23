@@ -6,6 +6,7 @@ add_library(quiz_core STATIC
     src/app/ThemePreset.cpp
     src/i18n/I18n.cpp
     src/io/BankFormat.cpp
+    src/io/DocumentText.cpp
     src/io/ExamBuilder.cpp
     src/io/TextDocument.cpp
     src/model/Progress.cpp
@@ -20,3 +21,4 @@ add_library(quiz_core STATIC
 
 target_include_directories(quiz_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_features(quiz_core PUBLIC cxx_std_17)
+target_link_libraries(quiz_core PRIVATE stb_image)

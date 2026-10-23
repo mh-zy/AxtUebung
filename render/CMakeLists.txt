@@ -13,4 +13,4 @@ add_library(quiz_render STATIC
 
 target_include_directories(quiz_render PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(quiz_render PRIVATE ${CMAKE_SOURCE_DIR}/third_party/stb)
-target_link_libraries(quiz_render PUBLIC imgui quiz_core quiz_svg)
+target_link_libraries(quiz_render PUBLIC imgui quiz_core quiz_svg stb_image)
