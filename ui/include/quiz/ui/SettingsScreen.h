@@ -30,12 +30,12 @@ public:
 
     /// 从首页进入设置时调用：回到根页
     void reset() { page_ = Page::Root; }
-    /// Android 返回手势：子页先回设置根页；已经在根页返回 false。
+    /// Android 返回手势：按设置层级逐页返回；根页返回 false。
     bool backToRoot() {
         if (page_ == Page::Root) {
             return false;
         }
-        page_ = Page::Root;
+        page_ = parentPage(page_);
         return true;
     }
 
@@ -51,9 +51,15 @@ private:
         Interface,
         Theme,   // 主题配色：五个分组在这一页上展开 / 收起，不再往下跳页
         Prompt,
+        Manual,
+        ManualOverview,
+        ManualImport,
+        ManualExport,
+        ManualIcons,
         Plugins,
     };
 
+    static Page parentPage(Page page);
     static const char* titleKeyFor(Page page);
     /// 子页头部：返回（回设置根页）+ 标题；返回 true 表示点了返回
     bool drawSubHeader(Page page);
@@ -67,6 +73,8 @@ private:
     /// 预设与应用：换预设、恢复默认、复制/粘贴主题文本
     void drawThemeApply();
     void drawPrompt();
+    void drawManual();
+    void drawManualContent(Page page, const char* manualId);
 
     /// 切换界面比例：存设置，并在支持的平台上把窗口也调成该比例
     void applyAspect(const std::string& code, int width, int height);

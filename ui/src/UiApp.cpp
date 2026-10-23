@@ -8,6 +8,7 @@
 #include "imgui_internal.h"
 #include "quiz/platform/Platform.h"
 #include "quiz/render/ImGuiRenderer.h"
+#include "quiz/text/MathText.h"
 #include "quiz/ui/UiScroll.h"
 #include "quiz/util/Log.h"
 
@@ -102,6 +103,106 @@ float wrappedTextHeight(const std::string& text, float wrapWidth) {
         return ImGui::GetTextLineHeight();
     }
     return ImGui::CalcTextSize(text.c_str(), nullptr, false, wrapWidth).y;
+}
+
+/// 公式排版中的单个文本段：普通文字与行内公式合成一段，独立公式单独成块。
+struct MathTextRun {
+    std::string text;
+    bool display = false;
+};
+
+std::vector<MathTextRun> mathTextRuns(const std::string& source) {
+    std::vector<MathTextRun> runs;
+    std::string inlineText;
+    const auto flushInline = [&]() {
+        if (!inlineText.empty()) {
+            runs.push_back({inlineText, false});
+            inlineText.clear();
+        }
+    };
+
+    for (const math::MathSegment& segment : math::splitFormulaSegments(source)) {
+        if (segment.kind == math::MathSegmentKind::DisplayFormula) {
+            flushInline();
+            if (!segment.text.empty()) {
+                runs.push_back({segment.text, true});
+            }
+        } else {
+            inlineText += segment.text;
+        }
+    }
+    flushInline();
+    return runs;
+}
+
+float mathBlockPadding() { return std::max(2.0f, ImGui::GetFontSize() * 0.25f); }
+float mathRunGap() { return std::max(1.0f, ImGui::GetFontSize() * 0.15f); }
+
+/// 与 drawMathTextAt() 使用完全相同的分段规则，保证卡片高度和实际绘制一致。
+float mathTextHeight(const std::string& source, float wrapWidth) {
+    const std::vector<MathTextRun> runs = mathTextRuns(source);
+    if (runs.empty()) {
+        return ImGui::GetTextLineHeight();
+    }
+
+    const float safeWrap = std::max(wrapWidth, 1.0f);
+    float total = 0.0f;
+    for (size_t i = 0; i < runs.size(); ++i) {
+        if (i > 0) {
+            total += mathRunGap();
+        }
+        if (runs[i].display) {
+            total += mathBlockPadding() * 2.0f;
+        }
+        total += ImGui::CalcTextSize(runs[i].text.c_str(), nullptr, false, safeWrap).y;
+    }
+    return total;
+}
+
+/// 在指定位置画题库富文本。普通文字和行内公式共用同一换行宽度；独立公式
+/// 单独成块并尽量居中，超宽时仍按可用宽度换行。
+void drawMathTextAt(const std::string& source, const ImVec2& origin, float wrapWidth,
+                    ImU32 color) {
+    const std::vector<MathTextRun> runs = mathTextRuns(source);
+    const float safeWrap = std::max(wrapWidth, 1.0f);
+    float y = origin.y;
+    for (size_t i = 0; i < runs.size(); ++i) {
+        if (i > 0) {
+            y += mathRunGap();
+        }
+        if (runs[i].display) {
+            y += mathBlockPadding();
+            const float wrappedHeight =
+                ImGui::CalcTextSize(runs[i].text.c_str(), nullptr, false, safeWrap).y;
+            const ImVec2 unwrapped = ImGui::CalcTextSize(runs[i].text.c_str(), nullptr, false, 0.0f);
+            const bool fits = unwrapped.x <= safeWrap;
+            const float x = fits ? origin.x + (safeWrap - unwrapped.x) * 0.5f : origin.x;
+            ImGui::GetWindowDrawList()->AddText(
+                ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(x, y), color,
+                runs[i].text.c_str(), nullptr, fits ? 0.0f : safeWrap);
+            y += wrappedHeight + mathBlockPadding();
+        } else {
+            const float height =
+                ImGui::CalcTextSize(runs[i].text.c_str(), nullptr, false, safeWrap).y;
+            ImGui::GetWindowDrawList()->AddText(
+                ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(origin.x, y), color,
+                runs[i].text.c_str(), nullptr, safeWrap);
+            y += height;
+        }
+    }
+}
+
+/// 当前文字颜色 + 当前光标位置的标准题库文本绘制入口。
+void mathTextColored(const std::string& source, float wrapWidth, ImU32 color) {
+    const ImVec2 origin = ImGui::GetCursorScreenPos();
+    const float width =
+        std::max(wrapWidth > 0.0f ? wrapWidth : ImGui::GetContentRegionAvail().x, 1.0f);
+    drawMathTextAt(source, origin, width, color);
+    ImGui::Dummy(ImVec2(width, mathTextHeight(source, width)));
+}
+
+void mathText(const std::string& source, float wrapWidth = 0.0f) {
+    mathTextColored(source, wrapWidth, ImGui::GetColorU32(ImGuiCol_Text));
 }
 
 /// 圆角卡片：高度由调用方算好传进来（比自动高度可预期）
@@ -209,7 +310,7 @@ bool optionRow(const char* id, const std::string& letter, const std::string& tex
     const float width = ImGui::GetContentRegionAvail().x;
     const float textWrap = std::max(width - 110.0f, 60.0f);
     const float height =
-        std::max(controlHeight(), wrappedTextHeight(text, textWrap) + ImGui::GetFontSize() * 1.0f);
+        std::max(controlHeight(), mathTextHeight(text, textWrap) + ImGui::GetFontSize() * 1.0f);
     const ImVec2 origin = ImGui::GetCursorScreenPos();
     const ImVec2 far(origin.x + width, origin.y + height);
     ImDrawList* const draw = ImGui::GetWindowDrawList();
@@ -252,9 +353,8 @@ bool optionRow(const char* id, const std::string& letter, const std::string& tex
 
     // 选项文字（自动换行，整体垂直居中）
     const float textX = badgeMax.x + ImGui::GetFontSize() * 0.7f;
-    const float textY = origin.y + (height - wrappedTextHeight(text, textWrap)) * 0.5f;
-    draw->AddText(ImGui::GetFont(), ImGui::GetFontSize(), ImVec2(textX, textY), textColor,
-                  text.c_str(), nullptr, textWrap);
+    const float textY = origin.y + (height - mathTextHeight(text, textWrap)) * 0.5f;
+    drawMathTextAt(text, ImVec2(textX, textY), textWrap, textColor);
 
     // 结果标记
     if (state == RowState::Correct || state == RowState::Wrong) {
@@ -891,6 +991,11 @@ bool UiApp::handleBack() {
 
 void UiApp::draw(float deltaSeconds) {
     frameDelta_ = deltaSeconds;
+    if (!manualIntroInitialized_) {
+        manualIntroInitialized_ = true;
+        manualIntroOpen_ = !context_.settings().manualIntroDismissed;
+        manualIntroDontAgain_ = false;
+    }
     if (pendingBackDismissText_) {
         ImGui::ClearActiveID();
         pendingBackDismissText_ = false;
@@ -960,6 +1065,17 @@ void UiApp::draw(float deltaSeconds) {
     }
 
     ImGui::End();
+
+    if (manualIntroOpen_) {
+        ImGui::OpenPopup("##manual_intro");
+        manualIntroOpen_ = false;
+    }
+    if (ImGui::BeginPopupModal("##manual_intro", nullptr,
+                               ImGuiWindowFlags_AlwaysAutoResize |
+                                   ImGuiWindowFlags_NoTitleBar)) {
+        drawManualIntroPopup();
+        ImGui::EndPopup();
+    }
 
     if (openTagPopup_) {
         ImGui::OpenPopup("##tag_popup");
@@ -1071,6 +1187,33 @@ void UiApp::drawToast(float deltaSeconds) {
                      ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize);
     ImGui::TextWrapped("%s", toast_.c_str());
     ImGui::End();
+}
+
+void UiApp::drawManualIntroPopup() {
+    const i18n::I18n& texts = context_.i18n();
+    ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(toImU32(colorAccentRgb_)), "%s",
+                       texts.text("ui.manual.intro_title"));
+    ImGui::Spacing();
+    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 22.0f);
+    ImGui::TextWrapped("%s", texts.text("ui.manual.intro_body"));
+    ImGui::PopTextWrapPos();
+    ImGui::TextDisabled("%s", texts.text("ui.manual.intro_enter_hint"));
+    ImGui::Spacing();
+    ImGui::Checkbox(texts.text("ui.manual.intro_dont_again"), &manualIntroDontAgain_);
+    ImGui::Spacing();
+    bool confirm = primaryButton(texts.text("ui.common.ok"), ImVec2(160.0f, 0.0f),
+                                 colorAccentRgb_);
+    if (ImGui::IsKeyPressed(ImGuiKey_Enter)) {
+        confirm = true;
+    }
+    if (!confirm) {
+        return;
+    }
+    if (manualIntroDontAgain_) {
+        context_.settings().manualIntroDismissed = true;
+        context_.saveSettings();
+    }
+    ImGui::CloseCurrentPopup();
 }
 
 // ---------------------------------------------------------------------------
@@ -1924,12 +2067,10 @@ void UiApp::drawQuiz() {
     const std::string stemText = question->stemFor(context_.i18n().language());
     const float stemWrap = std::max(ImGui::GetContentRegionAvail().x - cardPadding() * 2.0f - 4.0f, 80.0f);
     const float stemHeight =
-        std::max(controlHeight(), wrappedTextHeight(stemText, stemWrap) + cardPadding() * 2.0f + 6.0f);
+        std::max(controlHeight(), mathTextHeight(stemText, stemWrap) + cardPadding() * 2.0f + 6.0f);
     ImGui::Spacing();
     if (cardBegin("stem", stemHeight)) {
-        ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
-        ImGui::TextWrapped("%s", stemText.c_str());
-        ImGui::PopTextWrapPos();
+        mathText(stemText, stemWrap);
     }
     cardEnd();
 
@@ -1970,10 +2111,7 @@ void UiApp::drawQuiz() {
     if (question->type == QuestionType::Ordered) {
         ImGui::TextDisabled("%s", context_.i18n().text("ui.quiz.ordered_pool"));
         for (int i = 0; i < static_cast<int>(question->options.size()); ++i) {
-            ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
-            ImGui::Text("%s. %s", indexToLetter(i).c_str(),
-                        question->options[static_cast<size_t>(i)].c_str());
-            ImGui::PopTextWrapPos();
+            mathText(indexToLetter(i) + ". " + question->options[static_cast<size_t>(i)]);
         }
         ImGui::Spacing();
 
@@ -2102,30 +2240,26 @@ void UiApp::drawQuiz() {
 
         const float innerWidth =
             std::max(ImGui::GetContentRegionAvail().x - cardPadding() * 2.0f, 80.0f);
-        float cardHeight = cardPadding() * 2.0f + ImGui::GetTextLineHeight();
+        float cardHeight = cardPadding() * 2.0f + mathTextHeight(verdict, innerWidth);
         if (!detail.empty()) {
-            cardHeight += ImGui::GetStyle().ItemSpacing.y + wrappedTextHeight(detail, innerWidth);
+            cardHeight += ImGui::GetStyle().ItemSpacing.y + mathTextHeight(detail, innerWidth);
         }
         if (!analysis.empty()) {
             cardHeight += ImGui::GetStyle().ItemSpacing.y * 2.0f + ImGui::GetTextLineHeight() +
-                          wrappedTextHeight(analysis, innerWidth);
+                          mathTextHeight(analysis, innerWidth);
         }
         cardHeight += 8.0f;   // 底部余量：避免边界取整后出现一格多余滚动条
         cardHeight = std::min(cardHeight, 340.0f);   // 解析太长就让卡片自己滚
         ImGui::Spacing();
         if (cardBegin("verdict", cardHeight)) {
-            ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(verdictColor), "%s", verdict.c_str());
+            mathTextColored(verdict, innerWidth, verdictColor);
             if (!detail.empty()) {
-                ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
-                ImGui::TextWrapped("%s", detail.c_str());
-                ImGui::PopTextWrapPos();
+                mathText(detail, innerWidth);
             }
             if (!analysis.empty()) {
                 ImGui::Spacing();
                 ImGui::TextDisabled("%s", context_.i18n().text("ui.quiz.analysis"));
-                ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
-                ImGui::TextWrapped("%s", analysis.c_str());
-                ImGui::PopTextWrapPos();
+                mathText(analysis, innerWidth);
             }
         }
         cardEnd();
@@ -2380,11 +2514,9 @@ void UiApp::drawPaper(const QuestionBank& bank, const std::vector<int>& group) {
             const float materialWrap =
                 std::max(ImGui::GetContentRegionAvail().x - cardPadding() * 2.0f - 4.0f, 80.0f);
             const float materialHeight = std::min(
-                wrappedTextHeight(material->text, materialWrap) + cardPadding() * 2.0f + 6.0f, 200.0f);
+                mathTextHeight(material->text, materialWrap) + cardPadding() * 2.0f + 6.0f, 200.0f);
             if (cardBegin("paper_material", materialHeight)) {
-                ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
-                ImGui::TextWrapped("%s", material->text.c_str());
-                ImGui::PopTextWrapPos();
+                mathText(material->text, materialWrap);
             }
             cardEnd();
             ImGui::Separator();
@@ -2538,9 +2670,7 @@ void UiApp::drawPaperQuestion(const QuestionBank& bank, int index, int part, int
         tagChips(paperTags);
     }
 
-    ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
-    ImGui::TextWrapped("%s", question.stemFor(context_.i18n().language()).c_str());
-    ImGui::PopTextWrapPos();
+    mathText(question.stemFor(context_.i18n().language()));
 
     // ---- 作答控件（按题型）----
     if (question.type == QuestionType::Fill) {
@@ -2563,10 +2693,7 @@ void UiApp::drawPaperQuestion(const QuestionBank& bank, int index, int part, int
     } else if (question.type == QuestionType::Ordered) {
         ImGui::TextDisabled("%s", context_.i18n().text("ui.quiz.ordered_pool"));
         for (int i = 0; i < static_cast<int>(question.options.size()); ++i) {
-            ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
-            ImGui::Text("%s. %s", indexToLetter(i).c_str(),
-                        question.options[static_cast<size_t>(i)].c_str());
-            ImGui::PopTextWrapPos();
+            mathText(indexToLetter(i) + ". " + question.options[static_cast<size_t>(i)]);
         }
         const int slotCount = question.slotCount();
         const float buttonWidth = std::max(44.0f, ImGui::GetFontSize() * 2.4f);
@@ -2685,26 +2812,22 @@ void UiApp::drawPaperQuestion(const QuestionBank& bank, int index, int part, int
                                context_.i18n()
                                    .format("ui.quiz.result_partial", {{"score", percent}})
                                    .c_str());
-            ImGui::TextColored(
-                ImGui::ColorConvertU32ToFloat4(toImU32(colorWrongRgb_)), "%s",
-                context_.i18n()
-                    .format("ui.quiz.answer_is",
-                            {{"answer", answerTextOf(question, context_.i18n())}})
-                    .c_str());
+            mathTextColored(
+                context_.i18n().format(
+                    "ui.quiz.answer_is",
+                    {{"answer", answerTextOf(question, context_.i18n())}}),
+                ImGui::GetContentRegionAvail().x, toImU32(colorWrongRgb_));
         } else {
-            ImGui::TextColored(
-                ImGui::ColorConvertU32ToFloat4(toImU32(colorWrongRgb_)), "%s",
+            mathTextColored(
                 context_.i18n()
                     .format("ui.quiz.result_wrong",
-                            {{"answer", answerTextOf(question, context_.i18n())}})
-                    .c_str());
+                            {{"answer", answerTextOf(question, context_.i18n())}}),
+                ImGui::GetContentRegionAvail().x, toImU32(colorWrongRgb_));
         }
         const std::string analysis = question.analysisFor(context_.i18n().language());
         if (!analysis.empty()) {
             ImGui::TextDisabled("%s", context_.i18n().text("ui.quiz.analysis"));
-            ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
-            ImGui::TextWrapped("%s", analysis.c_str());
-            ImGui::PopTextWrapPos();
+            mathText(analysis);
         }
     }
     ImGui::PopID();
@@ -2787,7 +2910,8 @@ void UiApp::drawResult() {
             }
             ++wrongShown;
             ImGui::PushID(static_cast<int>(i));
-            if (ImGui::Selectable(bank->questions[i].stem.c_str(), false, 0,
+            const std::string stem = math::toDisplayText(bank->questions[i].stem);
+            if (ImGui::Selectable(stem.c_str(), false, 0,
                                   ImVec2(0.0f, controlHeight() * 0.8f))) {
                 cancelAutoNext();
                 session.jumpTo(static_cast<int>(i));
@@ -3664,7 +3788,7 @@ void UiApp::drawExamResult() {
             ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(color), "%s", texts.text(statusKey));
             std::string stem;
             if (line.index >= 0 && line.index < static_cast<int>(bank->questions.size())) {
-                stem = bank->questions[static_cast<size_t>(line.index)].stem;
+                stem = math::toDisplayText(bank->questions[static_cast<size_t>(line.index)].stem);
             }
             if (!stem.empty()) {
                 // Selectable 不会换行：先按可用宽度截一下，免得长题干被硬切掉后半截

@@ -67,6 +67,8 @@ struct Settings {
     /// 顶部 / 底部是否显示背景；题库区始终显示
     bool homeBackgroundTop = true;
     bool homeBackgroundBottom = true;
+    /// 首次启动的使用手册提示是否已经勾选“不再提示”
+    bool manualIntroDismissed = false;
 
     /// 允许的停顿区间：手改配置文件写歪了也会夹回这个范围
     static constexpr float kMinDelaySeconds = 0.3f;

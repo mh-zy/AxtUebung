@@ -29,9 +29,96 @@ void wrappedHint(const char* text) {
     ImGui::PopStyleColor();
 }
 
+/// 使用手册的轻量 Markdown 子集：一级/二级标题、列表、分隔线和普通段落。
+void drawManualMarkdown(const std::string& text, unsigned int iconRgb) {
+    size_t begin = 0;
+    while (begin <= text.size()) {
+        const size_t end = text.find('\n', begin);
+        std::string line = text.substr(
+            begin, end == std::string::npos ? std::string::npos : end - begin);
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        if (line.empty()) {
+            ImGui::Spacing();
+        } else if (line.rfind("# ", 0) == 0) {
+            ImGui::PushStyleColor(ImGuiCol_Text,
+                                  ImGui::GetStyleColorVec4(ImGuiCol_CheckMark));
+            ImGui::TextWrapped("%s", line.c_str() + 2);
+            ImGui::PopStyleColor();
+            ImGui::Separator();
+        } else if (line.rfind("## ", 0) == 0) {
+            ImGui::Spacing();
+            ImGui::PushStyleColor(ImGuiCol_Text,
+                                  ImGui::GetStyleColorVec4(ImGuiCol_Text));
+            ImGui::TextWrapped("%s", line.c_str() + 3);
+            ImGui::PopStyleColor();
+        } else if (line == "---") {
+            ImGui::Separator();
+        } else if (line.rfind("- @icon:", 0) == 0) {
+            const size_t fileBegin = 8;
+            const size_t fileEnd = line.find(' ', fileBegin);
+            const std::string file =
+                fileEnd == std::string::npos ? std::string()
+                                             : line.substr(fileBegin, fileEnd - fileBegin);
+            const std::string description =
+                fileEnd == std::string::npos ? std::string() : line.substr(fileEnd + 1);
+            bool drewIcon = false;
+            if (!file.empty() && file.find_first_of("/\\") == std::string::npos &&
+                file.size() > 4 && file.substr(file.size() - 4) == ".svg") {
+                std::string error;
+                const ImTextureID icon = render::loadIconTexture(
+                    "icons/" + file, 96, iconRgb, &error, 0.92f);
+                const float side = std::max(24.0f, ImGui::GetFontSize() * 1.35f);
+                if (icon != static_cast<ImTextureID>(0)) {
+                    ImGui::Image(icon, ImVec2(side, side));
+                    ImGui::SameLine();
+                    ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
+                    ImGui::TextWrapped("%s", description.c_str());
+                    ImGui::PopTextWrapPos();
+                    drewIcon = true;
+                }
+            }
+            if (!drewIcon) {
+                ImGui::Bullet();
+                ImGui::SameLine();
+                ImGui::TextWrapped("%s", description.c_str());
+            }
+        } else if (line.rfind("- ", 0) == 0) {
+            ImGui::Bullet();
+            ImGui::SameLine();
+            ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
+            ImGui::TextWrapped("%s", line.c_str() + 2);
+            ImGui::PopTextWrapPos();
+        } else {
+            ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
+            ImGui::TextWrapped("%s", line.c_str());
+            ImGui::PopTextWrapPos();
+        }
+        if (end == std::string::npos) {
+            break;
+        }
+        begin = end + 1;
+    }
+}
+
 }  // namespace
 
 SettingsScreen::SettingsScreen(AppContext& context) : context_(context) {}
+
+SettingsScreen::Page SettingsScreen::parentPage(Page page) {
+    switch (page) {
+        case Page::ManualOverview:
+        case Page::ManualImport:
+        case Page::ManualExport:
+        case Page::ManualIcons:
+            return Page::Manual;
+        case Page::Root:
+            return Page::Root;
+        default:
+            return Page::Root;
+    }
+}
 
 const char* SettingsScreen::titleKeyFor(Page page) {
     switch (page) {
@@ -39,6 +126,11 @@ const char* SettingsScreen::titleKeyFor(Page page) {
         case Page::Interface: return "ui.settings.page_interface";
         case Page::Theme: return "ui.settings.page_theme";
         case Page::Prompt: return "ui.settings.page_prompt";
+        case Page::Manual: return "ui.settings.page_manual";
+        case Page::ManualOverview: return "ui.manual.overview";
+        case Page::ManualImport: return "ui.manual.import";
+        case Page::ManualExport: return "ui.manual.export";
+        case Page::ManualIcons: return "ui.manual.icons";
         case Page::Plugins: return "ui.settings.page_plugins";
         case Page::Root: break;
     }
@@ -47,7 +139,7 @@ const char* SettingsScreen::titleKeyFor(Page page) {
 
 bool SettingsScreen::drawSubHeader(Page page) {
     if (ImGui::Button(context_.i18n().text("ui.settings.back"), ImVec2(120.0f, 0.0f))) {
-        page_ = Page::Root;
+        page_ = parentPage(page);
         return true;
     }
     ImGui::SameLine();
@@ -80,6 +172,11 @@ SettingsScreen::Result SettingsScreen::draw() {
         case Page::Interface: drawInterface(result); break;
         case Page::Theme: drawTheme(); break;
         case Page::Prompt: drawPrompt(); break;
+        case Page::Manual: drawManual(); break;
+        case Page::ManualOverview: drawManualContent(page_, "overview"); break;
+        case Page::ManualImport: drawManualContent(page_, "import"); break;
+        case Page::ManualExport: drawManualContent(page_, "export"); break;
+        case Page::ManualIcons: drawManualContent(page_, "icons"); break;
         case Page::Plugins:
             wrappedHint(context_.i18n().text("ui.settings.not_implemented"));
             break;
@@ -97,6 +194,7 @@ void SettingsScreen::drawRoot() {
         {"ui.settings.page_interface", Page::Interface},
         {"ui.settings.page_theme", Page::Theme},
         {"ui.settings.page_prompt", Page::Prompt},
+        {"ui.settings.page_manual", Page::Manual},
         {"ui.settings.page_plugins", Page::Plugins},
     };
     for (const Entry& entry : entries) {
@@ -670,6 +768,43 @@ void SettingsScreen::drawTheme() {
     }
     ImGui::EndChild();
 }
+
+void SettingsScreen::drawManual() {
+    struct ManualEntry {
+        const char* labelKey;
+        Page page;
+    };
+    const ManualEntry entries[] = {
+        {"ui.manual.overview", Page::ManualOverview},
+        {"ui.manual.import", Page::ManualImport},
+        {"ui.manual.export", Page::ManualExport},
+        {"ui.manual.icons", Page::ManualIcons},
+    };
+    for (const ManualEntry& entry : entries) {
+        const std::string label = std::string(context_.i18n().text(entry.labelKey)) + "   ›";
+        if (ImGui::Button(label.c_str(), ImVec2(-1.0f, 0.0f))) {
+            page_ = entry.page;
+        }
+    }
+}
+
+void SettingsScreen::drawManualContent(Page page, const char* manualId) {
+    (void)page;
+    const std::string text = context_.manualPage(manualId);
+    if (text.empty()) {
+        wrappedHint(context_.i18n().text("ui.manual.empty"));
+        return;
+    }
+    if (ImGui::BeginChild("manual_scroll", ImVec2(0.0f, 0.0f), ImGuiChildFlags_None)) {
+        ScrollDrag scrollDrag;
+        unsigned int iconRgb = 0x3A434Au;
+        Settings::parseHexColor(context_.settings().uiColorIcon, iconRgb);
+        drawManualMarkdown(text, iconRgb);
+        ImGui::Dummy(ImVec2(0.0f, 8.0f));
+    }
+    ImGui::EndChild();
+}
+
 void SettingsScreen::drawPrompt() {
     const std::vector<PromptEntry>& prompts = context_.prompts();
     if (prompts.empty()) {

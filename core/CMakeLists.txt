@@ -14,6 +14,7 @@ add_library(quiz_core STATIC
     src/model/Scoring.cpp
     src/progress/ProgressStore.cpp
     src/session/QuizSession.cpp
+    src/text/MathText.cpp
     src/util/Log.cpp
 )
 

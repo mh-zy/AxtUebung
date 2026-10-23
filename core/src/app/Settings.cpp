@@ -80,6 +80,7 @@ std::string Settings::serialize() const {
            (homeBackgroundFit.empty() ? std::string("cover") : homeBackgroundFit) + "\n";
     out += std::string("home_background_top = ") + (homeBackgroundTop ? "1" : "0") + "\n";
     out += std::string("home_background_bottom = ") + (homeBackgroundBottom ? "1" : "0") + "\n";
+    out += std::string("manual_intro_dismissed = ") + (manualIntroDismissed ? "1" : "0") + "\n";
     return out;
 }
 
@@ -214,6 +215,8 @@ Settings Settings::parse(const std::string& text) {
             result.homeBackgroundTop = toBool(line.value);
         } else if (line.key == "home_background_bottom") {
             result.homeBackgroundBottom = toBool(line.value);
+        } else if (line.key == "manual_intro_dismissed") {
+            result.manualIntroDismissed = toBool(line.value);
         }
     }
     return result;

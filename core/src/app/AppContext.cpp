@@ -987,6 +987,24 @@ bool AppContext::switchLanguage(const std::string& code, std::string& outError) 
     return loadLanguagePack(code, outError);
 }
 
+std::string AppContext::manualPage(const std::string& page) const {
+    if (page.empty() || page.find_first_of("/\\.") != std::string::npos) {
+        return std::string();
+    }
+    const std::string cacheKey = i18n_.language() + ":" + page;
+    const auto cached = manualCache_.find(cacheKey);
+    if (cached != manualCache_.end()) {
+        return cached->second;
+    }
+    std::string text;
+    const std::string localized = "manual/" + page + "." + i18n_.language() + ".md";
+    if (!platform::readAssetText(localized, text)) {
+        platform::readAssetText("manual/" + page + ".zh-CN.md", text);
+    }
+    manualCache_[cacheKey] = text;
+    return text;
+}
+
 // ---------------------------------------------------------------------------
 // 设置：存在数据目录的 settings.txt，纯文本，可手工改
 // ---------------------------------------------------------------------------

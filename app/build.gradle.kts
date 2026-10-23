@@ -40,8 +40,8 @@ android {
         applicationId = "com.axt.quiz"
         minSdk = 24
         targetSdk = 37
-        versionCode = 10
-        versionName = "0.3.1-alpha"
+        versionCode = 11
+        versionName = "0.4.0"
 
         // x86_64 给模拟器，arm64-v8a 给真机
         ndk {

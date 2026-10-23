@@ -8,6 +8,6 @@
 // ============================================================================
 namespace quiz {
 
-constexpr const char* kAppVersion = "0.3.1-alpha";
+constexpr const char* kAppVersion = "0.4.0";
 
 }  // namespace quiz

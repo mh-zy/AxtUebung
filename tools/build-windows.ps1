@@ -267,6 +267,9 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $exe = Join-Path $buildPath 'bin\AxtQuiz.exe'
+$runtimeAssets = Join-Path $buildPath 'bin\assets'
+New-Item -ItemType Directory -Path $runtimeAssets -Force | Out-Null
+Copy-Item -Path (Join-Path $projectRoot 'assets\*') -Destination $runtimeAssets -Recurse -Force
 Write-Host ''
 Write-Host "构建成功：$exe" -ForegroundColor Green
 

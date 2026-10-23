@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -183,6 +184,9 @@ public:
     std::string languageName(const std::string& code) const;  // 语言的显示名（取自语言包）
     bool switchLanguage(const std::string& code, std::string& outError);
 
+    /// 读取内置使用手册 Markdown；找不到当前语言时回退简体中文。
+    std::string manualPage(const std::string& page) const;
+
     // ---- 主题预设（设置页「主题配色」用）----
     /// 来自 assets/presets/themes.txt（数据目录同名文件优先）
     const std::vector<ThemePreset>& themePresets() const { return themePresets_; }
@@ -244,6 +248,7 @@ private:
     Stats stats_;
     mutable std::string homeBackgroundCache_;
     mutable std::string homeBackgroundCacheKey_;
+    mutable std::map<std::string, std::string> manualCache_;
     // 做题时长：只算刷题页面开着的时间（以前是「进题库之后的全部时间」，把首页/设置也算进去了）
     bool quizPageActive_ = false;         // 现在是不是在刷题页
     double quizPageTickSeconds_ = 0.0;    // 上次结算的时刻

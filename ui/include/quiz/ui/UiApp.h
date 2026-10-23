@@ -65,6 +65,7 @@ private:
     /// 每交完一题调用：这一轮做完了就切到结算页
     void checkRoundFinished();
     void drawToast(float deltaSeconds);
+    void drawManualIntroPopup();
 
     void startBank(int index);
     /// 发起导出：弹系统「保存」对话框（只负责发起，结果在 pollPendingDialog 里收尾）
@@ -131,6 +132,9 @@ private:
     float frameDelta_ = 0.0f;      // 本帧时长（秒）：自动跳转倒计时用
     bool pendingBackDismissText_ = false;
     bool pendingBackClosePopup_ = false;
+    bool manualIntroInitialized_ = false;
+    bool manualIntroOpen_ = false;
+    bool manualIntroDontAgain_ = false;
     bool exitArmed_ = false;
     float exitArmTimer_ = 0.0f;
     float autoNextTimer_ = 0.0f;   // >0 表示正在倒计时自动跳下一题

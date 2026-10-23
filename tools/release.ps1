@@ -253,7 +253,7 @@ if (-not $SkipWindows) {
     New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
 
     Copy-RequiredFile -Source $exe -Destination (Join-Path $packageRoot 'AxtQuiz.exe')
-    Copy-TreeFiltered -Source (Join-Path $winOut 'bin\assets') `
+    Copy-TreeFiltered -Source (Join-Path $projectRoot 'assets') `
         -Destination (Join-Path $packageRoot 'assets') -ExcludeNames @(
             '*.bak*', '*.quiz', 'chevron-left.svg', 'move-right.svg',
             'play-track-next.svg', 'redo.svg', 'software-download.svg',

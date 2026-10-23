@@ -18,6 +18,7 @@
 #include "quiz/progress/ProgressStore.h"
 #include "quiz/render/SvgIcon.h"
 #include "quiz/session/QuizSession.h"
+#include "quiz/text/MathText.h"
 
 namespace {
 
@@ -644,6 +645,9 @@ void testSettings() {
     CHECK_EQ(backgroundBack.homeBackgroundFit, std::string("contain"));
     CHECK(!backgroundBack.homeBackgroundTop);
     CHECK(!backgroundBack.homeBackgroundBottom);
+    CHECK(!defaults.manualIntroDismissed);
+    background.manualIntroDismissed = true;
+    CHECK(quiz::Settings::parse(background.serialize()).manualIntroDismissed);
     CHECK_EQ(quiz::Settings::parse("[ui]\nhome_background_opacity = 999\n")
                  .homeBackgroundOpacity,
              quiz::Settings::kMaxBackgroundOpacity);
@@ -1557,6 +1561,51 @@ void inkBounds(const quiz::render::svg::Image& image, int& outMinX, int& outMinY
     }
 }
 
+void testMathTextCompatibility() {
+    std::printf("数学公式兼容层\n");
+
+    // 第一层：常见上下标、希腊字母、运算符、分式和根号。
+    CHECK_EQ(quiz::math::latexToUnicode("H_2O"), std::string("H₂O"));
+    CHECK_EQ(quiz::math::latexToUnicode("x^2 + y^2 = r^2"), std::string("x² + y² = r²"));
+    CHECK_EQ(quiz::math::latexToUnicode("\\alpha+\\beta \\le \\pi"),
+             std::string("α+β ≤ π"));
+    CHECK_EQ(quiz::math::latexToUnicode("\\frac{1}{2}"), std::string("1/2"));
+    CHECK_EQ(quiz::math::latexToUnicode("\\sqrt{a+b}"), std::string("√(a+b)"));
+    CHECK_EQ(quiz::math::latexToUnicode("10^{-3}"), std::string("10⁻³"));
+    CHECK_EQ(quiz::math::latexToUnicode("x^{n+1}"), std::string("xⁿ⁺¹"));
+    CHECK_EQ(quiz::math::latexToUnicode("\\unknown{x}"), std::string("\\unknown{x}"));
+    CHECK_EQ(quiz::math::latexToUnicode("x^a"), std::string("x^a"));   // 无法映射时完整回退
+
+    // 第二层：行内、独立公式和普通文字被正确分段，原始公式同时保留。
+    const std::vector<quiz::math::MathSegment> mixed =
+        quiz::math::splitFormulaSegments("速度 $v=\\frac{s}{t}$；$$a^2+b^2=c^2$$ 完成");
+    CHECK_EQ(mixed.size(), size_t(5));
+    if (mixed.size() == 5) {
+        CHECK(mixed[0].kind == quiz::math::MathSegmentKind::Text);
+        CHECK_EQ(mixed[0].text, std::string("速度 "));
+        CHECK(mixed[1].kind == quiz::math::MathSegmentKind::InlineFormula);
+        CHECK_EQ(mixed[1].source, std::string("v=\\frac{s}{t}"));
+        CHECK_EQ(mixed[1].text, std::string("v=s/t"));
+        CHECK(mixed[2].kind == quiz::math::MathSegmentKind::Text);
+        CHECK(mixed[3].kind == quiz::math::MathSegmentKind::DisplayFormula);
+        CHECK_EQ(mixed[3].text, std::string("a²+b²=c²"));
+        CHECK(mixed[4].kind == quiz::math::MathSegmentKind::Text);
+        CHECK_EQ(mixed[4].text, std::string(" 完成"));
+    }
+
+    // 未闭合美元符号和转义美元符号按普通文字显示，不能吞掉后文。
+    const std::vector<quiz::math::MathSegment> unclosed =
+        quiz::math::splitFormulaSegments("未闭合 $x^2");
+    CHECK_EQ(unclosed.size(), size_t(1));
+    if (!unclosed.empty()) {
+        CHECK(unclosed[0].kind == quiz::math::MathSegmentKind::Text);
+        CHECK_EQ(unclosed[0].text, std::string("未闭合 $x^2"));
+    }
+    CHECK_EQ(quiz::math::toDisplayText("价格 \\$5，公式 $x^2$"),
+             std::string("价格 $5，公式 x²"));
+    CHECK_EQ(quiz::math::toDisplayText("前 $$x_1$$ 后"), std::string("前 \nx₁\n 后"));
+}
+
 void testSvgRasterize() {
     const std::string full =
         "<svg viewBox=\"0 0 24 24\"><rect x=\"0\" y=\"0\" width=\"24\" height=\"24\" "
@@ -2103,6 +2152,7 @@ int main(int argc, char** argv) {
     testExamFormat();
     testExamPaper();
     testExamSession();
+    testMathTextCompatibility();
     testSvgRasterize();
 
     std::printf("==== 共 %d 项检查，失败 %d 项 ====\n", g_checks, g_failures);
