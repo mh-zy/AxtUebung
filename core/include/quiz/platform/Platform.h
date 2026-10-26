@@ -76,6 +76,9 @@ void applyPendingWindowResize();
 ///   界面就没法提示“复制失败”）
 bool setClipboardText(const std::string& text);
 
+/// 用系统默认浏览器打开 https 链接（仅接受 http/https）
+bool openUrl(const std::string& url);
+
 /// 是否有物理键盘：触屏端没有。用来隐藏「按 Ctrl+C」这类只对桌面有意义的提示
 bool hasHardwareKeyboard();
 

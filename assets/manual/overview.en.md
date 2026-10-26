@@ -81,6 +81,11 @@ Android Back moves one level at a time. Settings subpages return to the Config r
 
 The app does not connect to the network or collect accounts, device identifiers, advertising data, analytics, crash reports, or push tokens. Banks, progress, settings, and prompts stay on this device.
 
-Feedback: jytc4399@163.com
+Submit feedback through Issues:
+
+- AtomGit: https://atomgit.com/gcw_7wG3NXCK/AxtUebing/issues
+- GitHub: https://github.com/mh-zy/AxtUebung/issues
+
+You can open either page from Config or copy its URL to the clipboard.
 
 When reporting a problem, include the version, device model, system version, reproduction steps, actual result, and expected result.

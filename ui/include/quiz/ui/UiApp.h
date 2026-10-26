@@ -70,6 +70,8 @@ private:
     void startBank(int index);
     /// 发起导出：弹系统「保存」对话框（只负责发起，结果在 pollPendingDialog 里收尾）
     void beginExport(AppContext::ExportKind kind);
+    /// 发起提示词下载：弹系统「保存」对话框
+    void beginPromptDownload(int index);
     /// 从系统文件对话框导入题库（首页「载入」按钮，同样只负责发起）
     void beginImport();
     /// 从系统文件对话框导入首页背景图片
@@ -171,11 +173,19 @@ private:
     int pendingExam_ = -1;                      // 准备页上等确认的那套卷（题库里的下标）
 
     // 正在等结果的系统对话框（同一时刻只允许一个）
-    enum class PendingDialog { None, Import, BackgroundImport, ExportBank, ExportTags };
+    enum class PendingDialog {
+        None,
+        Import,
+        BackgroundImport,
+        ExportBank,
+        ExportTags,
+        PromptDownload,
+    };
     PendingDialog pendingDialog_ = PendingDialog::None;
     AppContext::ExportKind pendingExportKind_ = AppContext::ExportKind::WholeBank;
     std::vector<std::string> pendingTags_;   // 按标签导出时选中的标签
     bool pendingBake_ = false;               // 按标签导出时要不要固化用户标签
+    int pendingPromptIndex_ = -1;            // 正在下载的提示词下标
 };
 
 }  // namespace quiz::ui

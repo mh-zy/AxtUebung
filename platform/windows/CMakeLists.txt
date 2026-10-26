@@ -4,8 +4,8 @@ add_executable(AxtQuiz
     PlatformWin.cpp
 )
 
-# comdlg32：系统「打开 / 保存」文件对话框（导入导出题备用）
-target_link_libraries(AxtQuiz PRIVATE quiz_ui user32 gdi32 comdlg32)
+# comdlg32：系统「打开 / 保存」文件对话框；shell32：在浏览器中打开反馈链接
+target_link_libraries(AxtQuiz PRIVATE quiz_ui user32 gdi32 comdlg32 shell32)
 
 # 可执行文件统一放在 <构建目录>/bin
 set_target_properties(AxtQuiz PROPERTIES

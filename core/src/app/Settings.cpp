@@ -78,6 +78,8 @@ std::string Settings::serialize() const {
     out += "home_background_opacity = " + std::to_string(homeBackgroundOpacity) + "\n";
     out += "home_background_fit = " +
            (homeBackgroundFit.empty() ? std::string("cover") : homeBackgroundFit) + "\n";
+    out += "home_background_offset_x = " + std::to_string(homeBackgroundOffsetX) + "\n";
+    out += "home_background_offset_y = " + std::to_string(homeBackgroundOffsetY) + "\n";
     out += std::string("home_background_top = ") + (homeBackgroundTop ? "1" : "0") + "\n";
     out += std::string("home_background_bottom = ") + (homeBackgroundBottom ? "1" : "0") + "\n";
     out += std::string("manual_intro_dismissed = ") + (manualIntroDismissed ? "1" : "0") + "\n";
@@ -211,6 +213,20 @@ Settings Settings::parse(const std::string& text) {
                                                                : value);
         } else if (line.key == "home_background_fit") {
             result.homeBackgroundFit = io::trim(line.value) == "contain" ? "contain" : "cover";
+        } else if (line.key == "home_background_offset_x") {
+            const int value = std::atoi(line.value.c_str());
+            result.homeBackgroundOffsetX =
+                value < Settings::kMinBackgroundOffset
+                    ? Settings::kMinBackgroundOffset
+                    : (value > Settings::kMaxBackgroundOffset ? Settings::kMaxBackgroundOffset
+                                                              : value);
+        } else if (line.key == "home_background_offset_y") {
+            const int value = std::atoi(line.value.c_str());
+            result.homeBackgroundOffsetY =
+                value < Settings::kMinBackgroundOffset
+                    ? Settings::kMinBackgroundOffset
+                    : (value > Settings::kMaxBackgroundOffset ? Settings::kMaxBackgroundOffset
+                                                              : value);
         } else if (line.key == "home_background_top") {
             result.homeBackgroundTop = toBool(line.value);
         } else if (line.key == "home_background_bottom") {

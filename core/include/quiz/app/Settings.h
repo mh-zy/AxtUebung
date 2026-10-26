@@ -64,6 +64,9 @@ struct Settings {
     int homeBackgroundOpacity = 22;
     /// cover = 铺满裁切；contain = 完整显示
     std::string homeBackgroundFit = "cover";
+    /// 背景偏移：百分比。-100 ~ 100，正值向右 / 向下。
+    int homeBackgroundOffsetX = 0;
+    int homeBackgroundOffsetY = 0;
     /// 顶部 / 底部是否显示背景；题库区始终显示
     bool homeBackgroundTop = true;
     bool homeBackgroundBottom = true;
@@ -84,6 +87,8 @@ struct Settings {
     static constexpr int kMaxWeightedAppend = 100;
     static constexpr int kMinBackgroundOpacity = 0;
     static constexpr int kMaxBackgroundOpacity = 100;
+    static constexpr int kMinBackgroundOffset = -100;
+    static constexpr int kMaxBackgroundOffset = 100;
 
     /// 实际使用的停顿时间（已夹到 [kMinDelaySeconds, kMaxDelaySeconds]）
     float autoNextDelay() const;

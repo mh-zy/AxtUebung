@@ -171,7 +171,7 @@ SettingsScreen::Result SettingsScreen::draw() {
         case Page::Answering: drawAnswering(result); break;
         case Page::Interface: drawInterface(result); break;
         case Page::Theme: drawTheme(); break;
-        case Page::Prompt: drawPrompt(); break;
+        case Page::Prompt: drawPrompt(result); break;
         case Page::Manual: drawManual(); break;
         case Page::ManualOverview: drawManualContent(page_, "overview"); break;
         case Page::ManualImport: drawManualContent(page_, "import"); break;
@@ -236,8 +236,43 @@ void SettingsScreen::drawRoot() {
     ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(feedbackAccent), "%s",
                        context_.i18n().text("ui.settings.feedback_title"));
     ImGui::TextWrapped("%s", context_.i18n().text("ui.settings.feedback_hint"));
-    ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(feedbackAccent), "%s",
-                       "jytc4399@163.com");
+    struct FeedbackLink {
+        const char* labelKey;
+        const char* url;
+    };
+    const FeedbackLink links[] = {
+        {"ui.settings.feedback_atomgit", "https://atomgit.com/gcw_7wG3NXCK/AxtUebing/issues"},
+        {"ui.settings.feedback_github", "https://github.com/mh-zy/AxtUebung/issues"},
+    };
+    const float copyWidth =
+        ImGui::CalcTextSize(context_.i18n().text("ui.settings.feedback_copy")).x +
+        ImGui::GetStyle().FramePadding.x * 2.0f + 16.0f;
+    const float linkWidth =
+        std::max(120.0f, ImGui::GetContentRegionAvail().x - copyWidth -
+                             ImGui::GetStyle().ItemSpacing.x);
+    for (int i = 0; i < 2; ++i) {
+        ImGui::PushID(i);
+        if (ImGui::Button(context_.i18n().text(links[i].labelKey), ImVec2(linkWidth, 0.0f)) &&
+            !platform::openUrl(links[i].url)) {
+            context_.setMessage(context_.i18n().text("ui.settings.feedback_open_failed"));
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("%s", links[i].url);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(context_.i18n().text("ui.settings.feedback_copy"),
+                          ImVec2(copyWidth, 0.0f))) {
+            if (platform::setClipboardText(links[i].url)) {
+                context_.setMessage(context_.i18n().text("ui.common.copied"));
+            } else {
+                context_.setMessage(context_.i18n().text("ui.settings.feedback_copy_failed"));
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("%s", links[i].url);
+        }
+        ImGui::PopID();
+    }
 }
 
 void SettingsScreen::drawAnswering(Result& result) {
@@ -353,8 +388,10 @@ void SettingsScreen::drawAnswering(Result& result) {
 }
 
 void SettingsScreen::drawInterface(Result& result) {
+    constexpr float kInterfaceComboWidth = 236.0f;
+
     // ---- 语言 ----
-    ImGui::SetNextItemWidth(220.0f);
+    ImGui::SetNextItemWidth(kInterfaceComboWidth);
     const std::string currentName = context_.i18n().languageName();
     if (ImGui::BeginCombo(context_.i18n().text("ui.home.language"), currentName.c_str())) {
         for (const auto& code : context_.availableLanguages()) {
@@ -392,7 +429,7 @@ void SettingsScreen::drawInterface(Result& result) {
         }
     }
 
-    ImGui::SetNextItemWidth(220.0f);
+    ImGui::SetNextItemWidth(kInterfaceComboWidth);
     if (ImGui::BeginCombo(context_.i18n().text("ui.settings.aspect"), aspectLabel.c_str())) {
         if (ImGui::Selectable(context_.i18n().text("ui.settings.aspect_auto"), aspectAuto)) {
             applyAspect("auto", 0, 0);
@@ -428,7 +465,7 @@ void SettingsScreen::drawInterface(Result& result) {
         sourceLabel = context_.i18n().text("ui.settings.background_custom");
     }
 
-    ImGui::SetNextItemWidth(220.0f);
+    ImGui::SetNextItemWidth(kInterfaceComboWidth);
     if (ImGui::BeginCombo("##background_source", sourceLabel.c_str())) {
         if (ImGui::Selectable(context_.i18n().text("ui.settings.background_none"), !enabled)) {
             std::string error;
@@ -469,7 +506,7 @@ void SettingsScreen::drawInterface(Result& result) {
         } else if (settings.homeBackgroundMode == "color") {
             modeLabel = context_.i18n().text("ui.settings.background_color");
         }
-        ImGui::SetNextItemWidth(180.0f);
+        ImGui::SetNextItemWidth(kInterfaceComboWidth);
         if (ImGui::BeginCombo(context_.i18n().text("ui.settings.background_mode"), modeLabel)) {
             if (ImGui::Selectable(context_.i18n().text("ui.settings.background_auto"),
                                   settings.homeBackgroundMode == "auto")) {
@@ -499,7 +536,7 @@ void SettingsScreen::drawInterface(Result& result) {
         const char* fitLabel = settings.homeBackgroundFit == "contain"
                                    ? context_.i18n().text("ui.settings.background_contain")
                                    : context_.i18n().text("ui.settings.background_cover");
-        ImGui::SetNextItemWidth(180.0f);
+        ImGui::SetNextItemWidth(kInterfaceComboWidth);
         if (ImGui::BeginCombo(context_.i18n().text("ui.settings.background_fit"), fitLabel)) {
             if (ImGui::Selectable(context_.i18n().text("ui.settings.background_cover"),
                                   settings.homeBackgroundFit != "contain")) {
@@ -512,6 +549,21 @@ void SettingsScreen::drawInterface(Result& result) {
                 context_.saveSettings();
             }
             ImGui::EndCombo();
+        }
+
+        ImGui::SetNextItemWidth(kInterfaceComboWidth);
+        if (ImGui::SliderInt(context_.i18n().text("ui.settings.background_offset_x"),
+                             &settings.homeBackgroundOffsetX,
+                             Settings::kMinBackgroundOffset, Settings::kMaxBackgroundOffset,
+                             "%d%%")) {
+            context_.saveSettings();
+        }
+        ImGui::SetNextItemWidth(kInterfaceComboWidth);
+        if (ImGui::SliderInt(context_.i18n().text("ui.settings.background_offset_y"),
+                             &settings.homeBackgroundOffsetY,
+                             Settings::kMinBackgroundOffset, Settings::kMaxBackgroundOffset,
+                             "%d%%")) {
+            context_.saveSettings();
         }
 
         ImGui::TextDisabled("%s", context_.i18n().text("ui.settings.background_coverage"));
@@ -803,7 +855,7 @@ void SettingsScreen::drawManualContent(Page page, const char* manualId) {
     ImGui::EndChild();
 }
 
-void SettingsScreen::drawPrompt() {
+void SettingsScreen::drawPrompt(Result& result) {
     const std::vector<PromptEntry>& prompts = context_.prompts();
     if (prompts.empty()) {
         wrappedHint(context_.i18n().text("ui.settings.prompt_empty"));
@@ -830,12 +882,17 @@ void SettingsScreen::drawPrompt() {
     }
 
     // ---- 复制：按钮，或者 Ctrl+C（焦点在本页时）----
+    if (ImGui::Button(context_.i18n().text("ui.settings.prompt_download"),
+                      ImVec2(140.0f, 0.0f))) {
+        result.requestPromptDownload = true;
+        result.promptDownloadIndex = promptIndex_;
+    }
     bool copyRequested = false;
-    if (ImGui::Button(context_.i18n().text("ui.common.copy"), ImVec2(160.0f, 0.0f))) {
+    ImGui::SameLine();
+    if (ImGui::Button(context_.i18n().text("ui.common.copy"), ImVec2(140.0f, 0.0f))) {
         copyRequested = true;
     }
     if (platform::hasHardwareKeyboard()) {   // 触屏端没有键盘，这行提示没意义
-        ImGui::SameLine();
         ImGui::TextDisabled("%s", context_.i18n().text("ui.settings.prompt_copy_hint"));
     }
     if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::GetIO().KeyCtrl &&

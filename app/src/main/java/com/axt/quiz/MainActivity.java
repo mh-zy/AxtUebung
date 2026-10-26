@@ -577,6 +577,25 @@ public class MainActivity extends NativeActivity {
     }
 
     /**
+     * 用系统浏览器打开反馈 Issue 页面（native 侧 platform::openUrl 调它）。
+     * @return true = 已交给系统处理
+     */
+    public boolean openUrl(String url) {
+        if (url == null || (!url.startsWith("https://") && !url.startsWith("http://"))) {
+            return false;
+        }
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            intent.addCategory(Intent.CATEGORY_BROWSABLE);
+            startActivity(intent);
+            return true;
+        } catch (Exception error) {
+            Log.w(TAG, "打开外部链接失败 " + url, error);
+            return false;
+        }
+    }
+
+    /**
      * 写系统剪贴板（设置页「提示词」的复制按钮用；native 侧 platform::setClipboardText 调它）。
      * @return true = 写成功
      */

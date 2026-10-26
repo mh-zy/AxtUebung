@@ -25,7 +25,7 @@ Icon colors follow the current theme's Icon color.
 - @icon:export-tags.svg View or add tags.
 - @icon:grid.svg Open the question overview.
 - @icon:file-x.svg Open the current bank's missed-question list.
-- @icon:file-x.svg After entering from the missed list and answering correctly, remove the current question from it.
+- @icon:m-file-x.svg After entering from the missed list and answering correctly, remove the current question from it.
 
 ## Bank card
 

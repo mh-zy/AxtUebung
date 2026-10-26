@@ -3,7 +3,7 @@
  Android 端一键构建 / 安装 / 出发布包（Gradle + AGP + NDK）
  ============================================================================
  做的事：
-   1. 设置 JAVA_HOME / ANDROID_HOME（默认用本机 Android Studio 自带的 JDK 和下面的 SDK 路径）
+   1. 设置 JAVA_HOME / ANDROID_HOME（优先使用调用者环境；也可用参数显式指定 JDK 与 SDK）
    2. gradlew :app:assembleDebug（-Release 时是 assembleRelease）
    3. -Release：把 release APK 复制成 dist\AxtUebung-<versionName>.apk
       （versionName 直接从 app\build.gradle.kts 里读，不写死 —— 以前是手工复制，
@@ -14,7 +14,7 @@
      powershell -ExecutionPolicy Bypass -File tools\build-android.ps1
      powershell -ExecutionPolicy Bypass -File tools\build-android.ps1 -Release
      powershell -ExecutionPolicy Bypass -File tools\build-android.ps1 -Release -Install
-     powershell -ExecutionPolicy Bypass -File tools\build-android.ps1 -GradleUserHome D:\data\.gradle-home
+     powershell -ExecutionPolicy Bypass -File tools\build-android.ps1 -GradleUserHome <path>
 
  产物：
    debug：app\build\outputs\apk\debug\app-debug.apk
@@ -22,7 +22,7 @@
 
  模拟器 / 真机怎么驱动（这一整套都实测过，照抄即可）：
    * 起模拟器：Start-Process "$env:ANDROID_HOME\emulator\emulator.exe" -ArgumentList
-       '-avd','Pixel9x64','-no-window','-no-audio','-no-boot-anim','-no-snapshot','-gpu','swiftshader_indirect' -WindowStyle Hidden
+       '-avd','<AVD name>','-no-window','-no-audio','-no-boot-anim','-no-snapshot','-gpu','swiftshader_indirect' -WindowStyle Hidden
    * 装 + 起：adb install -r <apk>；adb shell am start -n com.axt.quiz/.MainActivity
    * 截图：adb shell screencap -p /sdcard/s.png 然后 adb pull /sdcard/s.png
    * 点系统界面（DocumentsUI 等）：adb shell uiautomator dump /sdcard/d.xml → 解析 bounds → adb shell input tap x y
@@ -37,15 +37,42 @@ param(
     [switch]$Release,                                    # 出 release（侧载）包并复制到 dist\
     [switch]$Install,                                    # 装到当前设备
     [string]$GradleUserHome = '',
-    [string]$JavaHome = 'D:\Environment\Android\Android Studio\jbr',
-    [string]$SdkRoot = 'D:\Environment\Android\SDK'
+    [string]$JavaHome = '',
+    [string]$SdkRoot = ''
 )
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 
-if (-not (Test-Path $JavaHome)) {
-    throw "找不到 JDK：$JavaHome（可用 -JavaHome 指定）"
+if ([string]::IsNullOrWhiteSpace($JavaHome)) {
+    if ($env:JAVA_HOME) {
+        $JavaHome = $env:JAVA_HOME
+    } else {
+        $studioCandidates = @(
+            (Join-Path $env:ProgramFiles 'Android\Android Studio\jbr'),
+            (Join-Path $env:LOCALAPPDATA 'Programs\Android Studio\jbr')
+        )
+        $JavaHome = $studioCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+    }
+}
+if ([string]::IsNullOrWhiteSpace($SdkRoot)) {
+    if ($env:ANDROID_SDK_ROOT) {
+        $SdkRoot = $env:ANDROID_SDK_ROOT
+    } elseif ($env:ANDROID_HOME) {
+        $SdkRoot = $env:ANDROID_HOME
+    } else {
+        $sdkCandidate = Join-Path $env:LOCALAPPDATA 'Android\Sdk'
+        if (Test-Path -LiteralPath $sdkCandidate) {
+            $SdkRoot = $sdkCandidate
+        }
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($JavaHome) -or -not (Test-Path -LiteralPath $JavaHome)) {
+    throw "找不到 JDK（请设置 JAVA_HOME 或用 -JavaHome 指定）"
+}
+if ([string]::IsNullOrWhiteSpace($SdkRoot) -or -not (Test-Path -LiteralPath $SdkRoot)) {
+    throw "找不到 Android SDK（请设置 ANDROID_SDK_ROOT / ANDROID_HOME，或用 -SdkRoot 指定）"
 }
 $env:JAVA_HOME = $JavaHome
 $env:ANDROID_SDK_ROOT = $SdkRoot

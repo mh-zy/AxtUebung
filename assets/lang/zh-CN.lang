@@ -250,6 +250,8 @@ ui.settings.background_opacity = 不透明度
 ui.settings.background_fit = 铺放方式
 ui.settings.background_cover = 铺满裁切
 ui.settings.background_contain = 完整显示
+ui.settings.background_offset_x = 水平偏移
+ui.settings.background_offset_y = 垂直偏移
 ui.settings.background_coverage = 覆盖范围
 ui.settings.background_top = 顶部
 ui.settings.background_bank = 题库
@@ -292,6 +294,7 @@ ui.settings.prompt_select = 选择提示词
 ui.settings.prompt_copy_hint = 也可以按 Ctrl+C
 ui.settings.prompt_copy_failed = 复制失败：当前平台不支持剪贴板
 ui.settings.prompt_preview = 预览
+ui.settings.prompt_download = 下载提示词
 ui.settings.prompt_empty = 没有找到提示词：把 .txt 放进 assets/prompt 或 data/prompt
 ui.settings.preset = 主题预设
 ui.settings.preset_import = 导入
@@ -335,10 +338,15 @@ ui.exam.home = 返回主页
 ui.exam.exit = 退出考试
 ui.exam.exit_ask = 退出这场考试不记成绩，确定吗？
 
-ui.settings.feedback_title = 反馈与联系
-ui.settings.feedback_hint = 遇到问题、发现错误或有建议，欢迎发送邮件：
+ui.settings.feedback_title = 问题反馈
+ui.settings.feedback_hint = 遇到问题、发现错误或有建议，请提交 Issue。提交前请先搜索已有问题，并附上版本、设备型号、复现步骤、实际结果和期望结果。
+ui.settings.feedback_atomgit = AtomGit Issues
+ui.settings.feedback_github = GitHub Issues
+ui.settings.feedback_copy = 复制地址
+ui.settings.feedback_open_failed = 无法打开 Issue 页面，请检查系统浏览器设置
+ui.settings.feedback_copy_failed = 复制 Issue 地址失败
 
-ui.settings.beta_warning = 当前为内测版本，不能保证程序一定稳定
+ui.settings.beta_warning = 当前为公测版本，功能仍可能调整，不能保证程序一定稳定
 
 ui.common.back_again_exit = 再返回一次退出应用
 

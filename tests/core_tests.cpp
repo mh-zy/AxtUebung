@@ -757,6 +757,8 @@ void testSettings() {
     CHECK_EQ(defaults.homeBackgroundMode, std::string("auto"));
     CHECK_EQ(defaults.homeBackgroundOpacity, 22);
     CHECK_EQ(defaults.homeBackgroundFit, std::string("cover"));
+    CHECK_EQ(defaults.homeBackgroundOffsetX, 0);
+    CHECK_EQ(defaults.homeBackgroundOffsetY, 0);
     CHECK(defaults.homeBackgroundTop);
     CHECK(defaults.homeBackgroundBottom);
     quiz::Settings background;
@@ -764,6 +766,8 @@ void testSettings() {
     background.homeBackgroundMode = "tint";
     background.homeBackgroundOpacity = 64;
     background.homeBackgroundFit = "contain";
+    background.homeBackgroundOffsetX = 25;
+    background.homeBackgroundOffsetY = -40;
     background.homeBackgroundTop = false;
     background.homeBackgroundBottom = false;
     const quiz::Settings backgroundBack = quiz::Settings::parse(background.serialize());
@@ -771,6 +775,8 @@ void testSettings() {
     CHECK_EQ(backgroundBack.homeBackgroundMode, std::string("tint"));
     CHECK_EQ(backgroundBack.homeBackgroundOpacity, 64);
     CHECK_EQ(backgroundBack.homeBackgroundFit, std::string("contain"));
+    CHECK_EQ(backgroundBack.homeBackgroundOffsetX, 25);
+    CHECK_EQ(backgroundBack.homeBackgroundOffsetY, -40);
     CHECK(!backgroundBack.homeBackgroundTop);
     CHECK(!backgroundBack.homeBackgroundBottom);
     CHECK(!defaults.manualIntroDismissed);
@@ -779,6 +785,12 @@ void testSettings() {
     CHECK_EQ(quiz::Settings::parse("[ui]\nhome_background_opacity = 999\n")
                  .homeBackgroundOpacity,
              quiz::Settings::kMaxBackgroundOpacity);
+    CHECK_EQ(quiz::Settings::parse("[ui]\nhome_background_offset_x = -999\n")
+                 .homeBackgroundOffsetX,
+             quiz::Settings::kMinBackgroundOffset);
+    CHECK_EQ(quiz::Settings::parse("[ui]\nhome_background_offset_y = 999\n")
+                 .homeBackgroundOffsetY,
+             quiz::Settings::kMaxBackgroundOffset);
 
     // 界面比例：默认跟随窗口；合法比例能读回来；乱写的当作跟随窗口
     int aspectWidth = 0;

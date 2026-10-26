@@ -66,5 +66,5 @@ powershell -ExecutionPolicy Bypass -File tools\build-android.ps1
 ## 联系方式
 
 - 开发者：mh-zy（@gcw_7wG3NXCK）
-- 邮箱：jytc4399@163.com
-- 仓库 Issue：待公开仓库创建后填写
+- AtomGit Issues：https://atomgit.com/gcw_7wG3NXCK/AxtUebing/issues
+- GitHub Issues：https://github.com/mh-zy/AxtUebung/issues

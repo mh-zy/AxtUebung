@@ -248,6 +248,8 @@ ui.settings.background_opacity = Opacity
 ui.settings.background_fit = Fit
 ui.settings.background_cover = Cover
 ui.settings.background_contain = Contain
+ui.settings.background_offset_x = Horizontal offset
+ui.settings.background_offset_y = Vertical offset
 ui.settings.background_coverage = Coverage
 ui.settings.background_top = Top
 ui.settings.background_bank = Banks
@@ -290,6 +292,7 @@ ui.settings.prompt_select = Prompt
 ui.settings.prompt_copy_hint = or press Ctrl+C
 ui.settings.prompt_copy_failed = Copy failed: clipboard is not supported on this platform
 ui.settings.prompt_preview = Preview
+ui.settings.prompt_download = Download prompt
 ui.settings.prompt_empty = No prompts found: put .txt files in assets/prompt or data/prompt
 ui.settings.preset = Theme presets
 ui.settings.preset_import = Import
@@ -333,10 +336,15 @@ ui.exam.home = Home
 ui.exam.exit = Quit exam
 ui.exam.exit_ask = Quitting this exam will not record a score. Continue?
 
-ui.settings.feedback_title = Feedback
-ui.settings.feedback_hint = For bugs, corrections, or suggestions, please email:
+ui.settings.feedback_title = Issues and feedback
+ui.settings.feedback_hint = For bugs, corrections, or suggestions, submit an Issue. Search existing Issues first and include the version, device model, reproduction steps, actual result, and expected result.
+ui.settings.feedback_atomgit = AtomGit Issues
+ui.settings.feedback_github = GitHub Issues
+ui.settings.feedback_copy = Copy URL
+ui.settings.feedback_open_failed = Could not open the Issue page; check the system browser settings
+ui.settings.feedback_copy_failed = Could not copy the Issue URL
 
-ui.settings.beta_warning = This is a beta build; stability is not guaranteed.
+ui.settings.beta_warning = This is a public beta; features may still change and stability is not guaranteed.
 
 ui.common.back_again_exit = Press back again to exit
 

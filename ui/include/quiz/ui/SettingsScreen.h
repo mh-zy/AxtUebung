@@ -25,6 +25,8 @@ public:
         bool fontDirty = false;       // 换了语言，需要重建字体
         bool cancelAutoNext = false;  // 关掉了「答对自动跳下一题」
         bool requestBackgroundImport = false;  // 打开系统文件选择器导入首页背景
+        bool requestPromptDownload = false;    // 打开系统保存对话框下载当前提示词
+        int promptDownloadIndex = -1;
     };
     Result draw();
 
@@ -72,7 +74,7 @@ private:
     void drawThemeGroup(int group);
     /// 预设与应用：换预设、恢复默认、复制/粘贴主题文本
     void drawThemeApply();
-    void drawPrompt();
+    void drawPrompt(Result& result);
     void drawManual();
     void drawManualContent(Page page, const char* manualId);
 

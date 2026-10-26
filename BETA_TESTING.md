@@ -1,8 +1,10 @@
-# 内测说明
+# 公测说明
 
-版本：1.0.0-alpha<br>
+版本：1.0.0-beta.1<br>
 平台：Android 优先<br>
-反馈邮箱：jytc4399@163.com
+反馈：[AtomGit Issues](https://atomgit.com/gcw_7wG3NXCK/AxtUebing/issues) · [GitHub Issues](https://github.com/mh-zy/AxtUebung/issues)
+
+应用内可直接打开 Issue，也可以复制地址后在浏览器中提交。
 
 ## 测试目标
 
@@ -14,7 +16,9 @@
 - 考试模式；
 - 列表按钮起手滚动、输入框起手滚动和惯性；
 - 进度保存、重启恢复和导出；
-- 深色/浅色主题和不同屏幕尺寸下的可用性。
+- 深色/浅色主题和不同屏幕尺寸下的可用性；
+- 首页背景水平/垂直偏移；
+- 提示词复制与下载。
 
 ## 安装前
 
@@ -73,6 +77,12 @@
 - 卸载或清除数据后本地记录是否按预期删除；
 - 导出备份是否能再次导入。
 
+### 7. 设置与提示词
+
+- 界面比例、语言、背景来源、显示模式和铺放方式的下拉文字是否完整显示；
+- 背景水平/垂直偏移是否只影响首页；
+- 中英文提示词是否可复制，并能通过系统保存对话框下载为 `.txt`。
+
 ## 反馈模板
 
 ```text
@@ -95,15 +105,16 @@ adb logcat -s AxtQuiz:V > axt-log.txt
 ```
 
 日志可能包含题库名称、文件名或本地路径，发送前请检查并脱敏。
+请将整理后的信息提交到 AtomGit 或 GitHub Issue，并先搜索是否已有相同问题。
 
 ## 已知限制
 
 - Windows 主要作为开发与题库制作端，触屏手感以 Android 为准；
 - 当前 Android release 配置仍使用调试密钥侧载，正式发行前会更换；
-- Android 系统备份已关闭，卸载或清除数据后需要从导出文件恢复；
-- 公开仓库地址和正式下载页尚未填写。
+- Android 系统备份已关闭，卸载或清除数据后需要从导出文件恢复。
 
 ## 联系
 
 开发者：mh-zy（@gcw_7wG3NXCK）  
-邮箱：jytc4399@163.com
+AtomGit Issues：https://atomgit.com/gcw_7wG3NXCK/AxtUebing/issues
+GitHub Issues：https://github.com/mh-zy/AxtUebung/issues

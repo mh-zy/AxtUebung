@@ -588,7 +588,7 @@ float brandTitleHeight(const std::string& title) {
 /// 带 CSS / <text> 的 CN_title.svg。
 float drawBrandTitle(const std::string& title, unsigned int accentRgb) {
     const float baseSize = ImGui::GetFontSize();
-    const float titleSize = baseSize * 1.50f;
+    const float titleSize = baseSize * 1.60f;
     ImFont* titleFont = render::titleFont();
     if (titleFont == nullptr) {
         titleFont = ImGui::GetFont();
@@ -603,9 +603,9 @@ float drawBrandTitle(const std::string& title, unsigned int accentRgb) {
     std::string error;
     const ImTextureID mark =
         render::loadIconTexture("icons/axt-mark.svg", 256, accentRgb, &error, 0.94f);
-    float textX = origin.x;
+    float textX = origin.x + 10;
     if (mark != 0) {
-        const float markY = origin.y + (rowHeight - markSide) * 0.5f;
+        const float markY = origin.y + (rowHeight - markSide) * 0.5f + 10;
         ImGui::GetWindowDrawList()->AddImage(
             mark, ImVec2(origin.x, markY), ImVec2(origin.x + markSide, markY + markSide));
         textX += markSide + gap;
@@ -613,7 +613,7 @@ float drawBrandTitle(const std::string& title, unsigned int accentRgb) {
 
     ImGui::GetWindowDrawList()->AddText(
         titleFont, titleSize,
-        ImVec2(textX, origin.y + (rowHeight - textSize.y) * 0.5f), toImU32(accentRgb),
+        ImVec2(textX, origin.y + (rowHeight - textSize.y) * 0.5f + 10), toImU32(accentRgb),
         title.c_str());
     ImGui::Dummy(ImVec2(textX - origin.x + textSize.x, rowHeight));
     return rowHeight;
@@ -646,8 +646,15 @@ void drawHomeBackground(const AppContext& context, const ImVec2& origin, float c
     const int alpha = std::clamp(settings.homeBackgroundOpacity, 0, 100) * 255 / 100;
     const float boxWidth = far.x - origin.x;
     const float boxHeight = std::max(far.y - origin.y, 1.0f);
+    const float offsetX = boxWidth *
+                          static_cast<float>(std::clamp(settings.homeBackgroundOffsetX, -100, 100)) /
+                          100.0f;
+    const float offsetY = boxHeight *
+                          static_cast<float>(std::clamp(settings.homeBackgroundOffsetY, -100, 100)) /
+                          100.0f;
     const float imageAspect =
         static_cast<float>(texture.width) / static_cast<float>(texture.height);
+    draw->PushClipRect(origin, far, true);
     if (settings.homeBackgroundFit == "contain") {
         float drawWidth = boxWidth;
         float drawHeight = boxWidth / imageAspect;
@@ -655,8 +662,8 @@ void drawHomeBackground(const AppContext& context, const ImVec2& origin, float c
             drawHeight = boxHeight;
             drawWidth = boxHeight * imageAspect;
         }
-        const ImVec2 imageMin(origin.x + (boxWidth - drawWidth) * 0.5f,
-                              origin.y + (boxHeight - drawHeight) * 0.5f);
+        const ImVec2 imageMin(origin.x + (boxWidth - drawWidth) * 0.5f + offsetX,
+                              origin.y + (boxHeight - drawHeight) * 0.5f + offsetY);
         draw->AddImage(texture.id, imageMin,
                        ImVec2(imageMin.x + drawWidth, imageMin.y + drawHeight), ImVec2(0, 0),
                        ImVec2(1, 1), IM_COL32(255, 255, 255, alpha));
@@ -672,9 +679,22 @@ void drawHomeBackground(const AppContext& context, const ImVec2& origin, float c
             v0 = crop;
             v1 = 1.0f - crop;
         }
+        const float shiftU = 0.5f * (1.0f - (u1 - u0)) *
+                             static_cast<float>(std::clamp(settings.homeBackgroundOffsetX, -100,
+                                                           100)) /
+                             100.0f;
+        const float shiftV = 0.5f * (1.0f - (v1 - v0)) *
+                             static_cast<float>(std::clamp(settings.homeBackgroundOffsetY, -100,
+                                                           100)) /
+                             100.0f;
+        u0 -= shiftU;
+        u1 -= shiftU;
+        v0 -= shiftV;
+        v1 -= shiftV;
         draw->AddImage(texture.id, origin, far, ImVec2(u0, v0), ImVec2(u1, v1),
                        IM_COL32(255, 255, 255, alpha));
     }
+    draw->PopClipRect();
 
     // 轻微主题色遮罩，彩图也能保持卡片 / 文字对比度。
     draw->AddRectFilled(origin, far,
@@ -727,7 +747,7 @@ BankCardAction bankCard(const char* id, const std::string& title, const std::str
     const float iconsWidth = iconSide * 2.0f + iconGap * 1.5f;
     const float textRight = width - pad - iconsWidth - 8.0f;
 
-    float height = pad + titleH + 6.0f + subH;
+    float height = pad + titleH + 7.0f + subH;
     if (hasProgress) {
         height += 10.0f + barH + 6.0f + subH;
     }
@@ -1717,6 +1737,33 @@ void UiApp::beginExport(AppContext::ExportKind kind) {
     pendingExportKind_ = kind;
 }
 
+void UiApp::beginPromptDownload(int index) {
+    if (pendingDialog_ != PendingDialog::None || index < 0 ||
+        index >= static_cast<int>(context_.prompts().size())) {
+        return;
+    }
+    std::string fileName = context_.prompts()[static_cast<size_t>(index)].name;
+    for (char& ch : fileName) {
+        if (ch == '\\' || ch == '/' || ch == ':' || ch == '*' || ch == '?' || ch == '"' ||
+            ch == '<' || ch == '>' || ch == '|') {
+            ch = '_';
+        }
+    }
+    if (fileName.empty()) {
+        fileName = "prompt";
+    }
+    const std::string suggested =
+        platform::joinPath(context_.exportDirectory(), fileName + ".txt");
+    if (!platform::beginPickSavePath(context_.i18n().text("ui.settings.prompt_download"),
+                                     suggested, std::vector<std::string>{".txt"})) {
+        context_.setMessage(context_.i18n().format(
+            "ui.export.failed", {{"reason", context_.i18n().text("ui.export.failed_pick")}}));
+        return;
+    }
+    pendingDialog_ = PendingDialog::PromptDownload;
+    pendingPromptIndex_ = index;
+}
+
 // 每帧看一眼：发起过的系统对话框有结果了吗？有就接着把活干完。
 // （Android 上对话框消失时应用会被停一下，这些代码要等回到前台后才轮到执行 —— 没关系，
 //   文件与进度都不依赖那一刻的内存状态。）
@@ -1821,6 +1868,21 @@ void UiApp::pollPendingDialog() {
             reportExportResult(path);
         } else {
             context_.setMessage(error);
+        }
+        return;
+    }
+    if (kind == PendingDialog::PromptDownload) {
+        if (pendingPromptIndex_ < 0 ||
+            pendingPromptIndex_ >= static_cast<int>(context_.prompts().size())) {
+            context_.setMessage(context_.i18n().text("ui.export.failed_write"));
+            return;
+        }
+        const std::string& text =
+            context_.prompts()[static_cast<size_t>(pendingPromptIndex_)].text;
+        if (platform::writeTextFile(path, text)) {
+            reportExportResult(path);
+        } else {
+            context_.setMessage(context_.i18n().text("ui.export.failed_write"));
         }
         return;
     }
@@ -3357,6 +3419,9 @@ void UiApp::drawSettings() {
     }
     if (result.requestBackgroundImport) {
         beginBackgroundImport();
+    }
+    if (result.requestPromptDownload) {
+        beginPromptDownload(result.promptDownloadIndex);
     }
 }
 

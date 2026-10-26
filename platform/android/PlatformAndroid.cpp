@@ -594,6 +594,33 @@ bool setClipboardText(const std::string& text) {
     return ok == JNI_TRUE;
 }
 
+bool openUrl(const std::string& url) {
+    if (url.rfind("https://", 0) != 0 && url.rfind("http://", 0) != 0) {
+        return false;
+    }
+    ActivityCall call;
+    if (!call.ready()) {
+        return false;
+    }
+    jmethodID method = call.env()->GetMethodID(call.cls(), "openUrl", "(Ljava/lang/String;)Z");
+    if (method == nullptr) {
+        call.reportException("GetMethodID openUrl");
+        return false;
+    }
+    jstring value = call.env()->NewStringUTF(url.c_str());
+    if (value == nullptr) {
+        call.reportException("NewStringUTF openUrl");
+        return false;
+    }
+    const jboolean ok = call.env()->CallBooleanMethod(g_activity->clazz, method, value);
+    call.env()->DeleteLocalRef(value);
+    if (call.env()->ExceptionCheck()) {
+        call.reportException("openUrl");
+        return false;
+    }
+    return ok == JNI_TRUE;
+}
+
 // 文件选择器：Android 走 SAF（ACTION_OPEN_DOCUMENT / ACTION_CREATE_DOCUMENT）
 // ---------------------------------------------------------------------------
 // 和桌面端有两处不一样，都在这里消化掉，ui 层不用关心：

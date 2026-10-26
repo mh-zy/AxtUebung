@@ -49,7 +49,7 @@ QuestionBank buildMarkedOnlyBank(const QuestionBank& bank, const BankProgress& p
 /// 按标签导出：带任意一个 tags 的题都保留（多选 = 或的关系）。
 /// 匹配范围包括题目自带的 tags 和用户自己加的标签（存在进度里）。
 /// @param bakeUserTags true = 把用户自己加的标签并进导出的题目里（固化），
-///                     导出的文件就自带标签、不依赖本机的进度文件
+///                     导出的文件就自带标签、不依赖当前设备的进度文件
 QuestionBank buildTaggedBank(const QuestionBank& bank, const BankProgress& progress,
                              const std::vector<std::string>& tags, bool bakeUserTags);
 

@@ -1,6 +1,6 @@
 # 第三方软件与资源许可
 
-最后更新：2026-10-19
+最后更新：2026-10-24
 
 题斩 / AxeQuiz 本体的源代码和原创资源采用 MIT 许可证，见根目录 `LICENSE`。以下第三方组件继续适用其各自许可证。发布源码或二进制时，应同时保留本文件和 `LICENSES/` 中的对应许可文本。
 
@@ -46,5 +46,5 @@ Gradle Wrapper、Android Gradle Plugin、CMake、Ninja、Visual Studio 和 Andro
 发现遗漏或错误时，请通过以下方式联系：
 
 - 开发者：mh-zy（@gcw_7wG3NXCK）
-- 邮箱：jytc4399@163.com
-- 仓库问题页：https://atomgit.com/gcw_7wG3NXCK/AxtUebing/issues
+- AtomGit Issues：https://atomgit.com/gcw_7wG3NXCK/AxtUebing/issues
+- GitHub Issues：https://github.com/mh-zy/AxtUebung/issues

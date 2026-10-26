@@ -55,6 +55,15 @@ difficulty = {optional integer 1-5}
 score = {optional positive integer, default 1}
 source = {optional source}
 
+[q]
+id = q2
+type = single
+stem = {second sub-question under the same material}
+option = {option A}
+option = {option B}
+answer = A
+analysis = {optional explanation}
+
 [break]
 
 # If the source contains exams, place them after all questions.
@@ -98,7 +107,7 @@ Normalization:
 - Convert `body` or `stem` used as material text to `text`;
 - Write material text as one line, with real newlines represented by `\n`;
 - A material section is not a question and does not consume a question number;
-- A material must retain at least one existing sub-question; do not invent questions.
+- A material should contain at least 2 sub-questions. If fewer are present, preserve the existing content and mark it for completion; do not invent questions.
 
 # [q]
 Allowed keys:
@@ -142,6 +151,12 @@ If `type` is missing or written in Chinese, infer it:
 
 If a sub-question says `type = material`, the loader infers the concrete type; prefer outputting the concrete English type.
 
+# Math Compatibility
+1. The display layer supports `$...$` inline formulas and `$$...$$` display blocks.
+2. Common numeric sub/superscripts, Greek letters, relation/operator symbols, simple `\frac{numerator}{denominator}`, and `\sqrt{content}` can be converted to Unicode.
+3. Complex layout, matrices, multi-line alignment, and unimplemented LaTeX commands are not guaranteed to render correctly. Preserve unknown commands and unclosed `$` verbatim; never drop following text or rewrite them silently.
+4. Preserve original LaTeX and the `$`/`$$` delimiters. Do not replace formulas with images or unrelated text. If meaning cannot be confirmed, retain the source and mark `# [complex formula, manual confirmation required]`.
+
 # Answer Rules
 1. `single`: one letter, such as `A`; numeric `1` becomes `A`, `2` becomes `B`.
 2. `multiple`: several letters separated by English commas with no spaces or duplicates, such as `A,C`.
@@ -158,7 +173,7 @@ If a sub-question says `type = material`, the loader infers the concrete type; p
 3. Both forms may be mixed.
 4. Sub-questions may be `single`, `multiple`, `judge`, `fill`, `indeterminate`, or `ordered`.
 5. If a question references a missing material ID, add `# [question references a missing material, manual confirmation required]`.
-6. Do not impose a fixed sub-question count; preserve the actual questions in the source.
+6. Each material should contain at least 2 sub-questions. If the source has fewer than 2 and cannot be split safely, do not invent questions; preserve the existing sub-question(s) and mark `# [fewer than 2 material sub-questions, manual completion required]`.
 
 # Exam Sections [exam]
 Only output exams that already exist in the source or that the user explicitly asks you to generate. Do not add exams to an ordinary bank on your own.
@@ -226,10 +241,11 @@ Material rules:
 # Output Requirements
 1. Output only the corrected complete bank as plain text.
 2. Do not output explanations, greetings, summaries, or surrounding remarks.
-3. Do not use Markdown code fences by default; the output must be directly saveable as `.quiz` and readable by `loadBank`.
-4. If the user asks for something incompatible with BankFormat, prioritize the user's request but add this comment before the output:
+3. By default, output plain text without a Markdown fence; it must be directly saveable as `.quiz` and readable by `loadBank`.
+4. When the target model or platform is DeepSeek, wrap the complete bank in exactly one Markdown `text` code block. This explicitly overrides the default no-fence rule; do not add explanations outside the block.
+5. If the user asks for something incompatible with BankFormat, prioritize the user's request but add this comment before the output:
    `# [output format is not BankFormat v1 and cannot be parsed directly by loadBank]`
-5. Preserve existing exams and draw rules. If none exist, do not invent them.
+6. Preserve existing exams and draw rules. If none exist, do not invent them.
 
 # Pre-Output Self-Check
 - Are only `[meta]`, `[material]`, `[q]`, `[break]`, `[exam]`, and `[draw]` used?
@@ -238,6 +254,7 @@ Material rules:
 - Are all answer formats correct for single, multiple, judge, fill, indeterminate, and ordered questions?
 - Does every fill blank have an answer, and does `blanks` match?
 - Are material references valid and original sub-question types preserved?
+- Does every material contain at least 2 sub-questions, or retain existing questions and a completion marker when fewer are available?
 - Are `score` values positive, and are exam `pass` values in 0-100?
 - Are difficulty values in 1-5 or a valid range?
 - Does every `[draw]` belong to an exam, and does every exam have at least one draw rule?
@@ -245,4 +262,5 @@ Material rules:
 - Are real newlines inside values encoded as `\n`?
 - Do tags have no spaces, empty items, or internal commas?
 - Are empty `analysis` and `desc` fields omitted?
-- Is there no Markdown fence, no explanatory text, and no copy of this prompt?
+- For normal output, is there no Markdown fence? For DeepSeek, is there exactly one `text` fence with no text outside it? Is there no copy of this prompt?
+- Are math delimiters preserved and unsupported formulas retained with a confirmation marker?

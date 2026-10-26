@@ -6,10 +6,10 @@
 
 一个本地优先、离线运行的刷题应用。Windows 与 Android 共用同一套 C++ 核心，支持固定格式题库、多种刷题模式、材料题、考试模式、进度统计以及通过系统文件选择器导入导出。
 
-**当前版本：1.0.0-alpha（内测中）**<br>
+**当前版本：1.0.0-beta.1（公测中）**<br>
 开发者：mh-zy（@gcw_7wG3NXCK）<br>
-联系邮箱：jytc4399@163.com<br>
-开源仓库：[AtomGit](https://atomgit.com/gcw_7wG3NXCK/AxtUebing)
+问题反馈：[AtomGit Issues](https://atomgit.com/gcw_7wG3NXCK/AxtUebing/issues) · [GitHub Issues](https://github.com/mh-zy/AxtUebung/issues)<br>
+开源仓库：[AtomGit](https://atomgit.com/gcw_7wG3NXCK/AxtUebing) · [GitHub](https://github.com/mh-zy/AxtUebung)
 
 <img title="" src="docs/images/1-home-eg1.png" alt="首页示例1" data-align="inline" style="zoom:50%;">
 
@@ -23,11 +23,11 @@
 - **刷题模式**：顺序、乱序、权重、背题、错题训练、考试。
 - **题库导入导出**：Windows 系统对话框；Android SAF，不需要广泛存储权限。
 - **进度与统计**：本地保存作答次数、对错、收藏、标签、累计统计。
-- **个性化**：主题配色、首页背景、界面比例、语言包、正文字体与独立品牌标题字体、提示词。
+- **个性化**：主题配色、首页背景（含水平/垂直偏移）、界面比例、语言包、正文字体与独立品牌标题字体、提示词。
 - **答题操作**：底部提交与翻题栏固定，正文独立滚动，不再随题目长度上下移动。
 - **使用手册**：首次启动提示阅读说明，设置内提供概览和图标讲解。
 - **Word 题库导入**：可在内容可解析时读取 `.doc`、`.docx`、`.docm`、`.dot`、`.dotx` 和 `.dotm`，导入后统一保存为 `.quiz`。
-- **公开提示词**：中文/英文题库格式修正提示词随源码发布，便于批量整理题库。
+- **公开提示词**：中文/英文题库格式修正提示词随源码发布，可在应用内复制或下载为文本文件。
 - **触屏手势**：列表任意位置拖动、控件起手纵向拖动、惯性滚动。
 
 更多截图：
@@ -40,14 +40,14 @@
 
 | 平台      | 状态                           |
 | ------- | ---------------------------- |
-| Android | 主要使用目标；0.2.2 已在模拟器验证首页与设置主题页 |
-| Windows | 共用核心与测试开发端                   |
+| Android | 主要使用目标；1.0.0-beta.1 已在 Android 模拟器完成安装与核心流程验证 |
+| Windows | 共用核心、自动化测试和题库制作端 |
 
-Windows 版适合开发、题库制作和桌面使用；正式内测以 Android 为主。
+Windows 版适合开发、题库制作和桌面使用；本次公测以 Android 为主。
 
 ## 下载
 
-正式下载地址和发布包将在内测开始后提供。当前源码可直接自行构建。
+公测安装包和校验值通过版本标签及发布页提供；当前源码也可直接自行构建。
 
 发布二进制时建议同时提供：
 
@@ -102,7 +102,7 @@ powershell -ExecutionPolicy Bypass -File tools\build-android.ps1 -Install
 
 > 当前仓库的 Gradle 配置使用国内镜像并带官方 SHA-256 校验。海外网络环境可将 `gradle/wrapper/gradle-wrapper.properties` 改回 `services.gradle.org`，并视需要调整 `settings.gradle.kts` 的仓库顺序。
 
-> 当前 `release` 构建配置使用本机 Android 调试密钥，仅适合侧载测试。公开二进制发行前应替换为项目自己的签名密钥，且不得把 keystore 或密码提交到仓库。
+> 当前 `release` 构建配置使用开发调试密钥，仅适合侧载测试。公开二进制发行前应替换为项目自己的签名密钥，且不得把 keystore 或密码提交到仓库。
 
 修改根目录 `axt-app-icon.png` 后，重新生成 Android 桌面图标：
 
@@ -121,7 +121,7 @@ powershell -ExecutionPolicy Bypass -File tools\release.ps1 -DryRun -AllowDirty
 生成发布包：
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File tools\release.ps1 -ExpectedVersion 1.0.0-alpha
+powershell -ExecutionPolicy Bypass -File tools\release.ps1 -ExpectedVersion 1.0.0-beta.1
 ```
 
 脚本默认要求 `Version.h` 与 `app/build.gradle.kts` 的版本一致、Git 工作区干净，并生成：
@@ -137,7 +137,7 @@ dist\AxtUebung-<version>-RELEASE.md
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File tools\upload-atomgit.ps1 `
-  -StageAll -Message "Release 0.2.3" -Tag v0.2.3 -RunTests
+  -StageAll -Message "Release 1.0.0-beta.1" -Tag v1.0.0-beta.1 -RunTests
 ```
 
 上传脚本不会强推，也不会自动暂存，除非明确写 `-StageAll`。它只推送 Git 提交与标签；APK、ZIP 等二进制附件仍需在 AtomGit 的发布页单独上传。
@@ -208,7 +208,8 @@ Windows 命令行可以校验题库：
 - 应用本身不联网；
 - 不收集账号、设备标识、广告标识或统计信息；
 - 不接入崩溃上报或推送 SDK；
-- 题库、进度和设置保存在本机；
+- 反馈入口可按用户操作打开或复制 Issue 地址，应用本身不直接联网；
+- 题库、进度和设置保存在用户设备本地；
 - Android 已关闭系统备份（`android:allowBackup="false"`），卸载或清除数据后不会由系统自动恢复。
 
 完整说明见 [PRIVACY.md](PRIVACY.md)。
@@ -250,14 +251,18 @@ third_party/ 第三方源码
 
 ## 反馈
 
-- 邮箱：jytc4399@163.com
-- Issue：https://atomgit.com/gcw_7wG3NXCK/AxtUebing/issues
-- 内测说明：[BETA_TESTING.md](BETA_TESTING.md)
+- AtomGit Issues：https://atomgit.com/gcw_7wG3NXCK/AxtUebing/issues
+- GitHub Issues：https://github.com/mh-zy/AxtUebung/issues
+- 公测说明：[BETA_TESTING.md](BETA_TESTING.md)
+
+应用内可直接打开 Issue，也可以复制地址后提交。
+
+提交前请先搜索已有 Issue，并附上应用版本、设备型号、系统版本、复现步骤、实际结果和期望结果。日志中可能包含题库名称或本地路径，请先脱敏。
 
 ## 引用与商用通知
 
 强烈建议在文章、课程、项目文档或衍生作品中引用本项目时致谢维护者 **mh-zy（@gcw_7wG3NXCK）**。
 
-强烈建议在商业产品、服务或商业部署中引用本项目时，提前发送邮件至 **jytc4399@163.com** 通知维护者。
+强烈建议在商业产品、服务或商业部署中引用本项目时，提前通过 [AtomGit Issue](https://atomgit.com/gcw_7wG3NXCK/AxtUebing/issues) 或 [GitHub Issue](https://github.com/mh-zy/AxtUebung/issues) 通知维护者。
 
 这两项是维护者的强烈请求，不是 MIT License 之外的附加法律条件。详见 [NOTICE.md](NOTICE.md)。

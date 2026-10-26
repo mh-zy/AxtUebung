@@ -2,6 +2,7 @@
 #define NOMINMAX
 #include <windows.h>
 #include <commdlg.h>   // GetOpenFileNameW / GetSaveFileNameW（导入导出的文件对话框）
+#include <shellapi.h>
 
 #include <algorithm>
 #include <cstdio>
@@ -359,6 +360,15 @@ bool setClipboardText(const std::string& text) {
     }
     CloseClipboard();
     return ok;
+}
+
+bool openUrl(const std::string& url) {
+    if (url.rfind("https://", 0) != 0 && url.rfind("http://", 0) != 0) {
+        return false;
+    }
+    const HINSTANCE result =
+        ShellExecuteW(nullptr, L"open", toWide(url).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+    return reinterpret_cast<INT_PTR>(result) > 32;
 }
 
 bool hasHardwareKeyboard() {

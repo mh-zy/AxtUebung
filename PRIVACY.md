@@ -1,8 +1,8 @@
 # 隐私与数据说明 / Privacy and Data Notice
 
-最后更新：2026-10-20
+最后更新：2026-10-24
 
-适用范围：题斩 / AxeQuiz（兜底名 AxtUebung）0.2.x 及后续明确引用本说明的版本
+适用范围：题斩 / AxeQuiz（兜底名 AxtUebung）1.0.x 及后续明确引用本说明的版本
 
 ## 中文
 
@@ -17,9 +17,11 @@
 
 当前 Android 构建没有申请 `INTERNET` 权限。导入、导出和剪贴板操作只在用户主动触发时发生。
 
+设置页的反馈入口只在用户主动操作时打开系统浏览器或将 Issue 地址写入剪贴板，应用本身不直接访问网络；是否提交、提交哪些内容由用户自行决定。
+
 ### 2. 本地保存的数据
 
-应用可能在本机私有目录中保存：
+应用可能在用户设备的应用私有目录中保存：
 
 - 用户导入或创建的题库；
 - 答题进度、对错次数、收藏、标签和答题时间；
@@ -39,7 +41,7 @@
 
 ### 5. 日志
 
-应用可能在 Windows 控制台或 Android logcat 中输出运行日志。日志仅保留在本机，不会由应用自动上传。用户主动反馈问题时，可以自行复制并提供相关日志；请先检查其中是否包含不想公开的题库名称、文件路径或其他信息。
+应用可能在 Windows 控制台或 Android logcat 中输出运行日志。日志仅保留在用户设备上，不会由应用自动上传。用户主动反馈问题时，可以自行复制并提供相关日志；请先检查其中是否包含不想公开的题库名称、文件路径或其他信息。
 
 ### 6. 数据删除
 
@@ -56,7 +58,10 @@
 ### 8. 联系方式
 
 开发者：mh-zy（@gcw_7wG3NXCK）  
-联系邮箱：jytc4399@163.com
+AtomGit Issues：https://atomgit.com/gcw_7wG3NXCK/AxtUebing/issues
+GitHub Issues：https://github.com/mh-zy/AxtUebung/issues
+
+请在公开 Issue 中只描述一般性问题，不要附带个人信息、题库原文或其他敏感数据。
 
 ---
 
@@ -68,7 +73,11 @@ AxeQuiz is a local-first, offline quiz application.
 - There are no accounts, cloud sync, ads, payments, analytics, or crash-upload SDKs.
 - Quiz banks, progress, settings, themes, prompts, and imported/exported files are stored locally or handled through user-initiated system file dialogs.
 - The app does not automatically collect, sell, or share personal information with the developer or third parties.
+- Feedback controls only hand an Issue URL to the system browser or clipboard after a user action. The app itself does not access the network.
 - Android system backup is disabled through `android:allowBackup="false"`. Local data is not restored automatically after uninstalling or clearing the app. Use the in-app export function to keep backups.
 - Logs remain on the local device unless the user chooses to copy and share them.
 
-For privacy questions or corrections, contact: jytc4399@163.com
+For privacy questions or corrections, submit an issue without including private data:
+
+- AtomGit: https://atomgit.com/gcw_7wG3NXCK/AxtUebing/issues
+- GitHub: https://github.com/mh-zy/AxtUebung/issues

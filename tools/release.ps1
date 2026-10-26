@@ -22,7 +22,7 @@
    dist\AxtUebung-<version>-RELEASE.md
 
  注意：
-   * 当前 Android release 仍用本机调试密钥签名，只适合侧载测试。
+   * 当前 Android release 仍用开发调试密钥签名，只适合侧载测试。
    * 发布 ZIP 不包含 data\、work\、*.pdb、*.ilk 或 assets 里的 *.bak-* 文件。
  ============================================================================
 #>
