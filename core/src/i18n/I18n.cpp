@@ -298,8 +298,8 @@ const std::pair<const char*, const char*> kBuiltinTexts[] = {
     {"ui.quiz.paper_part", "第 {index} 小题"},
     {"ui.quiz.answered", "已答"},
     {"ui.quiz.unanswered", "未答"},
-    {"ui.quiz.prev_paper", "上一段材料"},
-    {"ui.quiz.next_paper", "下一段材料"},
+    {"ui.quiz.prev_paper", "上一题"},
+    {"ui.quiz.next_paper", "下一题"},
     {"ui.quiz.result_partial", "部分正确，得分 {score}"},
     {"ui.quiz.answer_is", "正确答案：{answer}"},
     {"ui.exam.pick_title", "选择试卷"},
@@ -344,7 +344,7 @@ const std::pair<const char*, const char*> kBuiltinTexts[] = {
     {"ui.settings.feedback_copy", "复制地址"},
     {"ui.settings.feedback_open_failed", "无法打开 Issue 页面，请检查系统浏览器设置"},
     {"ui.settings.feedback_copy_failed", "复制 Issue 地址失败"},
-    {"ui.settings.beta_warning", "当前为公测版本，功能仍可能调整，不能保证程序一定稳定"},
+    {"ui.settings.beta_warning", "当前为 1.0.0 正式版。重要题库和答题进度仍请定期导出备份"},
 };
 
 }  // namespace

@@ -2317,7 +2317,7 @@ void UiApp::drawQuiz() {
             cardHeight += ImGui::GetStyle().ItemSpacing.y * 2.0f + ImGui::GetTextLineHeight() +
                           mathTextHeight(analysis, innerWidth);
         }
-        cardHeight += 8.0f;   // 底部余量：避免边界取整后出现一格多余滚动条
+        cardHeight += 18.0f;   // 底部余量：避免边界取整后出现多余滚动条
         cardHeight = std::min(cardHeight, 340.0f);   // 解析太长就让卡片自己滚
         ImGui::Spacing();
         if (cardBegin("verdict", cardHeight)) {
@@ -2413,7 +2413,8 @@ void UiApp::drawQuiz() {
 // 权重刷题一轮里同一道题可能出现多次，按位置编号才不会一题两个号。
 // 颜色：未答=灰、答对=绿、在错题本里=红、部分分=黄；当前这一题外圈描边；收藏右上角一个星标色小点。
 void UiApp::openOverviewPopup() {
-    ImGui::OpenPopup("##quiz_overview_panel");
+    // 入口可能在滚动子窗口内；延后到页面父级统一打开，避免 Popup ID 作用域不一致。
+    overviewPopupRequested_ = true;
 }
 
 void UiApp::drawOverviewPanel() {
@@ -2421,11 +2422,13 @@ void UiApp::drawOverviewPanel() {
     const int bankIndex = context_.activeBank();
     if (!session.valid() || bankIndex < 0 ||
         bankIndex >= static_cast<int>(context_.banks().size())) {
+        overviewPopupRequested_ = false;
         return;
     }
     const std::vector<int>& plan = session.order();
     const int count = static_cast<int>(plan.size());
     if (count <= 0) {
+        overviewPopupRequested_ = false;
         return;
     }
     const BankEntry& entry = context_.banks()[static_cast<size_t>(bankIndex)];
@@ -2437,7 +2440,12 @@ void UiApp::drawOverviewPanel() {
     // 面板要比网格宽一些：右边得留出滚动条的位置，否则滚动条会压在最后一列的圆上
     const float panelWidth = std::min(display.x - 24.0f, 660.0f);
     const float scrollbar = ImGui::GetStyle().ScrollbarSize + ImGui::GetStyle().ItemSpacing.x;
-    const float gridWidth = panelWidth - ImGui::GetStyle().WindowPadding.x * 2.0f - scrollbar;
+    const float childInsetX =
+        ImGui::GetStyle().WindowPadding.x * 2.0f + ImGui::GetStyle().ChildBorderSize * 2.0f;
+    const float childInsetY =
+        ImGui::GetStyle().WindowPadding.y * 2.0f + ImGui::GetStyle().ChildBorderSize * 2.0f;
+    const float gridWidth =
+        panelWidth - ImGui::GetStyle().WindowPadding.x * 2.0f - scrollbar - childInsetX;
     const float gap = ImGui::GetStyle().ItemSpacing.x * 0.5f;
     // 圆的直径按 ~52px 反推每行几个（以前固定 5/8 个，圆太大）；至少 5 个、最多 10 个一行
     int perRow = static_cast<int>(gridWidth / 52.0f);
@@ -2449,15 +2457,23 @@ void UiApp::drawOverviewPanel() {
     // 总高度算小了一点点 → 明明放得下也冒出滚动条（手机上一眼就能看见）
     const float gridHeight = static_cast<float>(rows) * cell +
                              static_cast<float>(rows - 1) * ImGui::GetStyle().ItemSpacing.y;
-    const float chrome = ImGui::GetTextLineHeightWithSpacing() * 3.4f +
-                         ImGui::GetStyle().WindowPadding.y * 2.0f;
+    const float chrome = ImGui::GetTextLineHeightWithSpacing() +
+                         ImGui::GetFrameHeightWithSpacing() +
+                         ImGui::GetStyle().ItemSpacing.y * 2.0f +
+                         ImGui::GetStyle().WindowPadding.y * 2.0f + 6.0f;
     const float maxGrid = display.y * 0.62f;
-    // +2px 余量：行高按浮点算会有 1 像素的舍入误差，正好放得下时不该冒滚动条
-    const float scrollHeight = std::min(gridHeight + 2.0f, maxGrid);
+    // 子窗口尺寸包含自身内边距和边框；再留 4px 舍入余量，避免明明放得下仍冒滚动条。
+    const float scrollHeight = std::min(gridHeight + childInsetY + 4.0f, maxGrid);
     ImGui::SetNextWindowPos(ImVec2(display.x * 0.5f, display.y * 0.5f), ImGuiCond_Always,
                             ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(panelWidth, scrollHeight + chrome), ImGuiCond_Always);
-    if (!ImGui::BeginPopup("##quiz_overview_panel", ImGuiWindowFlags_NoMove)) {
+    if (overviewPopupRequested_) {
+        ImGui::OpenPopup("##quiz_overview_panel");
+        overviewPopupRequested_ = false;
+    }
+    if (!ImGui::BeginPopup("##quiz_overview_panel",
+                           ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                               ImGuiWindowFlags_NoScrollWithMouse)) {
         return;
     }
 
@@ -2465,12 +2481,15 @@ void UiApp::drawOverviewPanel() {
     ImGui::TextColored(ImGui::ColorConvertU32ToFloat4(accent), "%s",
                        context_.i18n().text("ui.quiz.overview"));
     ImGui::Separator();
+    ImGui::Spacing();
 
-    ImDrawList* const draw = ImGui::GetWindowDrawList();
     const int currentPos = session.planPosition() - 1;
     const ImU32 idleFill = shadeColor(ImGui::GetColorU32(ImGuiCol_WindowBg), 0.10f);
     const ImU32 idleText = ImGui::GetColorU32(ImGuiCol_TextDisabled);
-    if (ImGui::BeginChild("##overview_grid", ImVec2(0.0f, scrollHeight), ImGuiChildFlags_None)) {
+    if (ImGui::BeginChild("##overview_grid", ImVec2(0.0f, scrollHeight),
+                          ImGuiChildFlags_Borders)) {
+        // 必须使用网格子窗口自己的绘制列表，父窗口列表会绕过子窗口裁剪并覆盖标题。
+        ImDrawList* const draw = ImGui::GetWindowDrawList();
         // 题型总览固定一行 10 题，题多时纵向滚动；格点用 InvisibleButton，
         // 从格点之间的空隙拖动可滚，按在格点上则保留“跳题”点击。
         ScrollDrag scrollDrag;
@@ -2582,8 +2601,10 @@ void UiApp::drawPaper(const QuestionBank& bank, const std::vector<int>& group) {
             // 材料正文：卡片样式，太长就让卡片自己滚
             const float materialWrap =
                 std::max(ImGui::GetContentRegionAvail().x - cardPadding() * 2.0f - 4.0f, 80.0f);
-            const float materialHeight = std::min(
-                mathTextHeight(material->text, materialWrap) + cardPadding() * 2.0f + 6.0f, 200.0f);
+            const float materialHeight =
+                std::min(mathTextHeight(material->text, materialWrap) + cardPadding() * 2.0f +
+                             28.0f,
+                         200.0f);
             if (cardBegin("paper_material", materialHeight)) {
                 mathText(material->text, materialWrap);
             }

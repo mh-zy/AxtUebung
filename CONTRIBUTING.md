@@ -35,7 +35,7 @@ powershell -ExecutionPolicy Bypass -File tools\build-android.ps1
 - UI 只负责把状态画出来和把操作转成会话调用；
 - 平台相关能力放在 `platform/`；
 - 新行为尽量补核心测试；
-- 保持源码 UTF-8，注释可使用中文；
+- 保持源码 UTF-8；代码注释使用中文，专有名词和 API 名可保留英文；
 - 不新增联网、统计或第三方 SDK，除非先讨论隐私和许可证影响；
 - 修改题库格式时同步更新 `docs/题库格式.md` 和往返测试；
 - 修改版本时同步更新 `core/include/quiz/app/Version.h`、`app/build.gradle.kts` 的 `versionName` 与 `versionCode`。

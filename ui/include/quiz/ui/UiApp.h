@@ -156,6 +156,7 @@ private:
     int deleteArmedBank_ = -1;       // 卡片上「删除题库」已经点过一次的是哪一张
     bool showIssues_ = false;
     std::string issuesText_;
+    bool overviewPopupRequested_ = false;
     int fillFocusIndex_ = -1;      // 已经给哪一题自动聚焦过输入框
     bool openTagPopup_ = false;    // 本帧要打开「加标签」弹窗
     int tagTargetIndex_ = -1;      // 弹窗正在给哪一题加标签（-1 = 没有）

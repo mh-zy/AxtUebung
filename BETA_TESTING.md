@@ -1,6 +1,6 @@
-# 公测说明
+# 发布测试说明
 
-版本：1.0.0-beta.1<br>
+版本：1.0.0<br>
 平台：Android 优先<br>
 反馈：[AtomGit Issues](https://atomgit.com/gcw_7wG3NXCK/AxtUebing/issues) · [GitHub Issues](https://github.com/mh-zy/AxtUebung/issues)
 

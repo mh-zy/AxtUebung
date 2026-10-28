@@ -83,8 +83,8 @@ ui.quiz.paper_submitted = Submitted {count} questions
 ui.quiz.paper_part = Question {index}
 ui.quiz.answered = answered
 ui.quiz.unanswered = not answered
-ui.quiz.prev_paper = Previous material
-ui.quiz.next_paper = Next material
+ui.quiz.prev_paper = Previous question
+ui.quiz.next_paper = Next question
 ui.quiz.result_partial = Partly correct - score {score}
 ui.quiz.answer_is = Correct answer: {answer}
 ui.result.partial_line = {partial} of them earned partial credit
@@ -344,7 +344,7 @@ ui.settings.feedback_copy = Copy URL
 ui.settings.feedback_open_failed = Could not open the Issue page; check the system browser settings
 ui.settings.feedback_copy_failed = Could not copy the Issue URL
 
-ui.settings.beta_warning = This is a public beta; features may still change and stability is not guaranteed.
+ui.settings.beta_warning = AxeQuiz 1.0.0 is a stable release. Back up important banks and progress regularly.
 
 ui.common.back_again_exit = Press back again to exit
 
